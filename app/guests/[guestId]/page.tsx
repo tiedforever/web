@@ -8,8 +8,15 @@ import { getGuest, getGuests } from "@/src/server/actions/guests/guest.actions";
 import { getHouseholds } from "@/src/server/actions/guests/household.actions";
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
 import { Icon } from "@/src/components/shared/icons";
+import { Breadcrumbs } from "@/src/components/shared/breadcrumbs";
 import { PageHeader } from "@/src/components/shared/page-header";
 import { Badge, Card } from "@/src/components/shared/ui";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Guest details",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +70,14 @@ export default async function GuestDetailPage({
   return (
     <div className="space-y-8">
       <PageHeader
-        breadcrumb={<Link className="hover:text-[#2D5A27]" href="/guests">Guests / Guest detail</Link>}
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/guests", label: "Guests" },
+              { label: "Guest details" },
+            ]}
+          />
+        )}
         description="Contact details, household information, and planning notes for this guest."
         title={[guest.title, guest.firstName, guest.lastName].filter(Boolean).join(" ")}
         actions={

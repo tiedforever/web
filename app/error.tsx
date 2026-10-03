@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 import { Button, Card } from "@/src/components/shared/ui";
 
@@ -29,9 +30,17 @@ export default function GlobalError({
         <p className="mt-3 text-sm leading-6 text-[#7A4A43]">
           Try again, or return to the dashboard if the problem continues.
         </p>
-        <Button className="mt-6" onClick={reset} variant="primary">
-          Try again
-        </Button>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button onClick={reset} variant="primary">
+            Try again
+          </Button>
+          <Link
+            className="rounded-[10px] border border-[#D9D6C9] bg-white px-4 py-2 text-sm font-medium text-[#5C211B] hover:bg-[#FFF5F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9D3F32] focus-visible:ring-offset-2"
+            href="/dashboard"
+          >
+            Return to dashboard
+          </Link>
+        </div>
       </Card>
     </main>
   );

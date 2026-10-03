@@ -12,7 +12,6 @@ export const settingsNavigationItems = [
   { href: "/settings/locations", label: "Locations", icon: "pin" },
   { href: "/settings/sections", label: "Wedding Day Sections", icon: "calendar" },
   { href: "/settings/members", label: "Members", icon: "users" },
-  { href: "/settings/invitations", label: "Workspace invitations", icon: "file" },
   { href: "/settings/preferences", label: "Preferences", icon: "settings" },
 ] as const satisfies ReadonlyArray<{ href: string; label: string; icon: IconName }>;
 

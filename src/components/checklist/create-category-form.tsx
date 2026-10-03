@@ -54,18 +54,23 @@ export function CreateCategoryForm({
     setIsError(false);
 
     startTransition(async () => {
-      const result = await action(input);
+      try {
+        const result = await action(input);
 
-      if (!result.success) {
+        if (!result.success) {
+          setIsError(true);
+          setMessage(result.error);
+          return;
+        }
+
+        formRef.current?.reset();
+        setIsError(false);
+        setMessage(successMessage);
+        onSuccess?.();
+      } catch {
         setIsError(true);
-        setMessage(result.error);
-        return;
+        setMessage("Unable to save the category. Please try again.");
       }
-
-      formRef.current?.reset();
-      setIsError(false);
-      setMessage(successMessage);
-      onSuccess?.();
     });
   }
 

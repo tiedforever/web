@@ -20,12 +20,14 @@ type GuestRowData = GuestListStandaloneGuest | GuestListPlusOne;
 
 export function GuestTable({
   canEdit,
+  hasActiveFilters = false,
   households,
   standaloneGuests,
   search = "",
   weddingId,
 }: {
   canEdit: boolean;
+  hasActiveFilters?: boolean;
   households: GuestListHousehold[];
   standaloneGuests: GuestListStandaloneGuest[];
   search?: string;
@@ -40,9 +42,11 @@ export function GuestTable({
     return (
       <Card className="px-6 py-16">
         <EmptyState
-          description="Try adjusting your search or filters, or add the first guest to this wedding."
+          description={hasActiveFilters
+            ? "Try adjusting your search or filters."
+            : "Add the first guest or household to this wedding."}
           icon={<Icon name="users" size={22} />}
-          title="No invitation units found"
+          title={hasActiveFilters ? "No matching invitation units" : "No invitation units found"}
         />
       </Card>
     );
@@ -63,7 +67,7 @@ export function GuestTable({
         {households.map((household) => (
           <HouseholdItem
             canEdit={canEdit}
-            expanded={Boolean(search.trim()) || expandedHouseholds.has(household.id)}
+            expanded={expandedHouseholds.has(household.id)}
             household={household}
             key={household.id}
             onToggle={() => toggleHousehold(household.id)}
@@ -142,8 +146,8 @@ function HouseholdItem({
           onClick={onToggle}
           type="button"
         >
-          <span className="block text-sm font-semibold text-[#1C1C1C]">{household.name}</span>
-          <span className="mt-1 block text-xs text-[#8A8A82]">
+          <span className="block break-words text-sm font-semibold text-[#1C1C1C]">{household.name}</span>
+          <span className="mt-1 block break-words text-xs text-[#8A8A82]">
             {household.guests.length} {household.guests.length === 1 ? "member" : "members"}
             {household.primaryGuest ? ` · Primary: ${household.primaryGuest.firstName} ${household.primaryGuest.lastName}` : ""}
             {` · ${household.addressLineOne}, ${household.townCity}`}
@@ -243,7 +247,7 @@ function HouseholdMemberRow({
           <span className="block text-sm font-medium text-[#1C1C1C] hover:text-[#2D5A27]">
             {[guest.title, guest.firstName, guest.lastName].filter(Boolean).join(" ")}
           </span>
-          <span className="mt-1 block text-xs text-[#8A8A82]">
+          <span className="mt-1 block break-words text-xs text-[#8A8A82]">
             {relationshipText ?? (isPrimary ? "Primary invitee" : "Household member")}
             {guest.email ? ` · ${guest.email}` : ""}
             {guest.phone ? ` · ${guest.phone}` : ""}
@@ -312,7 +316,7 @@ function StandaloneGuestRow({
           </div>
         ) : null}
       </div>
-      <span className="hidden text-right text-xs leading-5 text-[#6B6B63] sm:block">
+      <span className="hidden min-w-0 max-w-[45%] break-words text-right text-xs leading-5 text-[#6B6B63] sm:block">
         {guest.email ? <span className="block">{guest.email}</span> : null}
         {guest.phone ? <span className="block">{guest.phone}</span> : null}
         {!guest.email && !guest.phone ? <span className="text-[#A5A39A]">No contact details</span> : null}
@@ -327,7 +331,7 @@ function SectionSummary({
   sections: { id: string; name: string; active: boolean }[];
 }) {
   return (
-    <span className="mt-2 block text-xs text-[#6B6B63]">
+    <span className="mt-2 block break-words text-xs text-[#6B6B63]">
       <span className="font-medium text-[#8A8A82]">Sections:</span>{" "}
       {sections.length > 0
         ? sections.map((section) => `${section.name}${section.active ? "" : " (inactive)"}`).join(", ")
@@ -379,13 +383,19 @@ function RemovePlusOneButton({
   function remove() {
     setError(null);
     startTransition(async () => {
-      const result = await removePlusOneRelationship(guestId);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await removePlusOneRelationship(guestId);
+        if (!result.success) {
+          setIsConfirmOpen(false);
+          setError(result.error);
+          return;
+        }
+        setIsConfirmOpen(false);
+        void invalidateGuestsQuery(queryClient, weddingId);
+      } catch {
+        setIsConfirmOpen(false);
+        setError("Unable to remove the plus-one relationship. Please try again.");
       }
-      setIsConfirmOpen(false);
-      void invalidateGuestsQuery(queryClient, weddingId);
     });
   }
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { skipOnboarding } from "@/src/server/actions/onboarding/onboarding.actions";
 import { createWedding } from "@/src/server/actions/wedding/wedding.actions";
 
-export function CreateWeddingForm() {
+export function CreateWeddingForm({ allowSkip = true }: { allowSkip?: boolean }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -17,6 +17,7 @@ export function CreateWeddingForm() {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending || success) return;
     setError(null);
     setSuccess(null);
     setDevelopmentWorkspaceInvitationUrl(null);
@@ -36,23 +37,27 @@ export function CreateWeddingForm() {
     };
 
     startTransition(async () => {
-      const result = await createWedding(input);
+      try {
+        const result = await createWedding(input);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        formRef.current?.reset();
+
+        if (result.data.memberInvitationMessage) {
+          setSuccess(result.data.memberInvitationMessage);
+          setDevelopmentWorkspaceInvitationUrl(result.data.developmentWorkspaceInvitationUrl ?? null);
+          setInvitePartner(false);
+          return;
+        }
+
+        router.push("/dashboard");
+      } catch {
+        setError("Unable to create wedding. Please try again.");
       }
-
-      formRef.current?.reset();
-
-      if (result.data.memberInvitationMessage) {
-        setSuccess(result.data.memberInvitationMessage);
-        setDevelopmentWorkspaceInvitationUrl(result.data.developmentWorkspaceInvitationUrl ?? null);
-        setInvitePartner(false);
-        return;
-      }
-
-      router.push("/dashboard");
     });
   }
 
@@ -62,14 +67,18 @@ export function CreateWeddingForm() {
     setDevelopmentWorkspaceInvitationUrl(null);
 
     startTransition(async () => {
-      const result = await skipOnboarding();
+      try {
+        const result = await skipOnboarding();
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        router.push("/dashboard");
+      } catch {
+        setError("Unable to skip onboarding. Please try again.");
       }
-
-      router.push("/dashboard");
     });
   }
 
@@ -136,6 +145,7 @@ export function CreateWeddingForm() {
           <input
             className="w-full rounded-[10px] border border-[#E4E0D4] bg-white px-3.5 py-3 text-sm outline-none transition focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
             defaultValue="Europe/London"
+            maxLength={100}
             name="timezone"
             required
           />
@@ -201,6 +211,7 @@ export function CreateWeddingForm() {
             </span>
             <input
               className="w-full rounded-[10px] border border-[#E4E0D4] bg-white px-3.5 py-3 text-sm outline-none transition focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
+              maxLength={254}
               name="partnerEmail"
               placeholder="partner@example.com"
               required
@@ -237,7 +248,7 @@ export function CreateWeddingForm() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {!success ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           className="w-full rounded-[10px] bg-[#2D5A27] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#245020] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           disabled={isPending}
@@ -245,15 +256,15 @@ export function CreateWeddingForm() {
         >
           {isPending ? "Creating wedding…" : "Create wedding"}
         </button>
-        <button
+        {allowSkip ? <button
           className="w-full rounded-[10px] border border-[#E4E0D4] bg-white px-5 py-3 text-sm font-medium text-[#6B6B63] transition hover:bg-[#F7F6F2] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           disabled={isPending}
           onClick={handleSkip}
           type="button"
         >
           {isPending ? "Saving…" : "Skip for now"}
-        </button>
-      </div>
+        </button> : null}
+      </div> : null}
     </form>
   );
 }

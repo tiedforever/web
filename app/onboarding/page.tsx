@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 
 import { CreateWeddingForm } from "@/src/components/onboarding/create-wedding-form";
 import { getActiveWedding } from "@/src/server/auth/get-active-wedding";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Create your wedding",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 

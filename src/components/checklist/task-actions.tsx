@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 
 import { ConfirmDialog } from "../shared/confirm-dialog";
 import { Icon } from "../shared/icons";
@@ -33,6 +39,35 @@ export function TaskActions({
   const [menuOpen, setMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const frame = requestAnimationFrame(() => {
+      menuRef.current?.querySelector<HTMLElement>("[role=\"menuitem\"]")?.focus();
+    });
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        menuContainerRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
+      setMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [menuOpen]);
 
   function handleDelete() {
     setError(null);
@@ -55,10 +90,49 @@ export function TaskActions({
     });
   }
 
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const menuItems = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>("[role=\"menuitem\"]") ?? [],
+    );
+    if (menuItems.length === 0) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setMenuOpen(false);
+      menuTriggerRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "Tab") {
+      setMenuOpen(false);
+      return;
+    }
+
+    const currentIndex = menuItems.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowDown") {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % menuItems.length;
+    } else if (event.key === "ArrowUp") {
+      nextIndex = currentIndex < 0
+        ? menuItems.length - 1
+        : (currentIndex - 1 + menuItems.length) % menuItems.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = menuItems.length - 1;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    menuItems[nextIndex]?.focus();
+  }
+
   return (
     <>
-      <div className="relative shrink-0">
+      <div className="relative shrink-0" ref={menuContainerRef}>
         <button
+          aria-controls={`task-actions-menu-${task.id}`}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-label={`Task actions for ${task.title}`}
@@ -66,12 +140,16 @@ export function TaskActions({
           onClick={() => setMenuOpen((open) => !open)}
           title="Task actions"
           type="button"
+          ref={menuTriggerRef}
         >
           <Icon name="more" size={17} />
         </button>
         <div
           className="absolute right-0 top-full z-20 mt-1 min-w-32 rounded-lg border border-[#E8E8E3] bg-white p-1 shadow-[0_8px_24px_rgba(28,28,28,0.12)]"
           hidden={!menuOpen}
+          id={`task-actions-menu-${task.id}`}
+          onKeyDown={handleMenuKeyDown}
+          ref={menuRef}
           role="menu"
         >
           <button
@@ -114,6 +192,7 @@ export function TaskActions({
         description="Update the fields available for this checklist task."
         onClose={() => setEditOpen(false)}
         open={editOpen}
+        returnFocusRef={menuTriggerRef}
         title={`Edit ${task.title}`}
       >
         <TaskForm
@@ -144,6 +223,7 @@ export function TaskActions({
         onConfirm={handleDelete}
         open={deleteOpen}
         pending={isPending}
+        returnFocusRef={menuTriggerRef}
         title={`Delete ${task.title}?`}
       />
     </>

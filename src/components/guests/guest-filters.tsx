@@ -46,8 +46,8 @@ export function GuestFilters({
 
   return (
     <form className="grid gap-3 lg:grid-cols-[minmax(220px,1.5fr)_1fr_1fr_1fr_auto]" method="get" onSubmit={submit}>
-      <Input defaultValue={search} name="search" placeholder="Search guests or households…" />
-      <Select defaultValue={sectionId} name="sectionId">
+      <Input aria-label="Search guests or households" defaultValue={search} name="search" placeholder="Search guests or households…" />
+      <Select aria-label="Filter by wedding section" defaultValue={sectionId} name="sectionId">
         <option value="">All sections</option>
         {sections.map((section) => (
           <option key={section.id} value={section.id}>
@@ -55,13 +55,13 @@ export function GuestFilters({
           </option>
         ))}
       </Select>
-      <Select defaultValue={ageGroup} name="ageGroup">
+      <Select aria-label="Filter by age group" defaultValue={ageGroup} name="ageGroup">
         <option value="">All age groups</option>
         <option value="ADULT">Adults</option>
         <option value="CHILD">Children</option>
         <option value="INFANT">Infants</option>
       </Select>
-      <Select defaultValue={tagId} name="tagId">
+      <Select aria-label="Filter by guest tag" defaultValue={tagId} name="tagId">
         <option value="">All tags</option>
         {tags.map((tag) => (
           <option key={tag.id} value={tag.id}>
@@ -74,7 +74,7 @@ export function GuestFilters({
           Filter
         </Button>
         <Link
-          className="hidden text-xs font-medium text-[#6B6B63] hover:text-[#2D5A27] sm:inline"
+          className="text-xs font-medium text-[#6B6B63] hover:text-[#2D5A27]"
           href="/guests"
         >
           Clear

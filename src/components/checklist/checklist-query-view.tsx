@@ -298,7 +298,7 @@ export function ChecklistQueryView({
         weddingName={weddingName}
       />
       {query.isError ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-[#E7C9C5] bg-[#FFF5F3] px-3 py-2 text-xs text-[#9D3F32]">
+        <div aria-live="polite" className="flex items-center justify-between gap-3 rounded-lg border border-[#E7C9C5] bg-[#FFF5F3] px-3 py-2 text-xs text-[#9D3F32]">
           <span>Live refresh failed. Showing the last saved checklist.</span>
           <button
             className="font-semibold underline"

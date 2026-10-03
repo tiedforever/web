@@ -3,7 +3,8 @@ const goodbyePage = `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Account deleted · Tied Forever</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Account deleted | Tied Forever</title>
     <style>
       :root { color-scheme: light; font-family: Arial, sans-serif; background: #fafaf8; color: #1c1c1c; }
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; box-sizing: border-box; }

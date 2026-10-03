@@ -188,7 +188,7 @@ describe("accountDeletionService", () => {
     expect(mocks.prisma.$transaction).toHaveBeenCalledOnce();
   });
 
-  it("blocks deletion when the user owns an active wedding", async () => {
+  it("blocks deletion when any wedding would lose its last active owner", async () => {
     mocks.tx.weddingMember.findFirst.mockResolvedValue({ id: "owner_membership" });
 
     await expect(
@@ -197,12 +197,38 @@ describe("accountDeletionService", () => {
         clerkUserId: "clerk_1",
       }),
     ).rejects.toThrow(
-      "You cannot delete your account while you own a wedding.",
+      "You are the only active owner of at least one wedding.",
     );
 
     expect(mocks.tx.weddingInvitation.deleteMany).not.toHaveBeenCalled();
     expect(mocks.tx.weddingMember.deleteMany).not.toHaveBeenCalled();
     expect(mocks.tx.user.delete).not.toHaveBeenCalled();
+    expect(mocks.clerkUserDelete).not.toHaveBeenCalled();
+  });
+
+  it("allows an owner to delete their account when another active owner remains", async () => {
+    mocks.tx.weddingMember.findMany.mockResolvedValue([
+      { ...snapshot.memberships[0], role: "OWNER" },
+    ]);
+    await accountDeletionService.deleteAccount({ userId: "user_1", clerkUserId: "clerk_1" });
+
+    expect(mocks.tx.weddingMember.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "user_1",
+        role: "OWNER",
+        status: "ACTIVE",
+        wedding: { members: { none: { userId: { not: "user_1" }, role: "OWNER", status: "ACTIVE" } } },
+      },
+      select: { id: true },
+    });
+    expect(mocks.tx.user.delete).toHaveBeenCalledWith({ where: { id: "user_1" } });
+    expect(mocks.clerkUserDelete).toHaveBeenCalledWith("clerk_1");
+    expect(mocks.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
+  });
+
+  it("does not delete the Clerk account when concurrent owner deletion aborts the transaction", async () => {
+    mocks.prisma.$transaction.mockRejectedValue(Object.assign(new Error("Write conflict"), { code: "P2034" }));
+    await expect(accountDeletionService.deleteAccount({ userId: "user_1", clerkUserId: "clerk_1" })).rejects.toThrow("Unable to delete your account. Please try again.");
     expect(mocks.clerkUserDelete).not.toHaveBeenCalled();
   });
 

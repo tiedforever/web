@@ -2,12 +2,14 @@ import Link from "next/link";
 
 import { SignOutControl } from "@/src/components/auth/sign-out-button";
 import { DeleteWeddingForm } from "@/src/components/settings/delete-wedding-form";
-import { WorkspaceInvitationManagement } from "@/src/components/settings/workspace-invitation-management";
 import { WeddingRequiredState } from "@/src/components/shared/wedding-required-state";
 import { Card } from "@/src/components/shared/ui";
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
 import { getAuthenticatedUser } from "@/src/server/auth/get-authenticated-user";
-import { listWeddingMemberInvitations } from "@/src/server/actions/wedding/workspace-invitation.actions";
+
+export const metadata = {
+  title: "Settings",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,6 @@ export default async function SettingsPage() {
   const context = await getWeddingPageContext();
   const user = context?.user ?? (await getAuthenticatedUser()).user;
   const isOwner = context?.role === "OWNER";
-  const memberInvitationResult = isOwner ? await listWeddingMemberInvitations() : null;
 
   return (
     <div className="space-y-8">
@@ -55,11 +56,11 @@ export default async function SettingsPage() {
         <WeddingRequiredState feature="Wedding workspace settings" />
       ) : null}
 
-      {isOwner && context ? (
+      {context ? (
         <Card className="p-5 sm:p-6">
-          <WorkspaceInvitationManagement
-            initialMemberInvitations={memberInvitationResult?.success ? memberInvitationResult.data : []}
-          />
+          <h2 className="text-base font-semibold text-[#1C1C1C]">Members and invitations</h2>
+          <p className="mt-1 text-sm text-[#7A7A6E]">See who has access to your wedding and manage member invitations.</p>
+          <Link className="mt-4 inline-flex rounded-[10px] border border-[#E4E0D4] px-4 py-2 text-sm font-medium text-[#2D5A27]" href="/settings/members">Manage members</Link>
         </Card>
       ) : null}
 
@@ -71,7 +72,7 @@ export default async function SettingsPage() {
           <h2 className="mt-2 text-lg font-semibold text-[#5C211B]">
             Delete {context.wedding.name}
           </h2>
-          <DeleteWeddingForm weddingName={context.wedding.name} />
+          <DeleteWeddingForm key={context.wedding.id} weddingName={context.wedding.name} />
         </Card>
       ) : null}
     </div>

@@ -3,9 +3,8 @@ import "server-only";
 import {
   MembershipStatus,
   WeddingInvitationStatus as WeddingMemberInvitationStatus,
-  WeddingMemberRole,
 } from "../../../app/generated/prisma/client";
-import type { WeddingInvitation as WeddingInvitationRecord } from "../../../app/generated/prisma/client";
+import type { WeddingInvitation as WeddingInvitationRecord, WeddingMemberRole } from "../../../app/generated/prisma/client";
 import { prisma } from "../db/prisma";
 import { logger } from "../logging/logger";
 
@@ -220,7 +219,6 @@ export class WeddingMemberInvitationRepository {
     try {
       return await prisma.$transaction(async (tx) => {
         const now = new Date();
-        const acceptedRole = WeddingMemberRole.OWNER;
         const invitation = await tx.weddingInvitation.findUnique({
           where: { id: input.id },
           select: {
@@ -239,6 +237,7 @@ export class WeddingMemberInvitationRepository {
             "INVALID",
           );
         }
+        const acceptedRole = invitation.role;
 
         const user = await tx.user.findUnique({
           where: { id: input.userId },
@@ -326,12 +325,7 @@ export class WeddingMemberInvitationRepository {
               leftAt: null,
             },
           });
-        } else if (existingMembership) {
-          await tx.weddingMember.update({
-            where: { id: existingMembership.id },
-            data: { role: acceptedRole },
-          });
-        } else {
+        } else if (!existingMembership) {
           await tx.weddingMember.create({
             data: {
               weddingId: input.weddingId,

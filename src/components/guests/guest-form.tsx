@@ -81,25 +81,27 @@ export function GuestForm({
     };
 
     startTransition(async () => {
-      const result: GuestActionResult<GuestActionData> = guest
-        ? await updateGuest(guest.id, payload)
-        : await createGuest(payload);
+      try {
+        const result: GuestActionResult<GuestActionData> = guest
+          ? await updateGuest(guest.id, payload)
+          : await createGuest(payload);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
 
-      if (guest) {
-        void invalidateGuestsQuery(queryClient, weddingId);
-      } else {
+        // Updating a guest can change household assignment, which changes the
+        // Dashboard's unassigned guest count.
         void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
-      }
-      setMessage(guest ? "Guest details saved." : "Guest added to your list.");
-      if (!guest) {
-        form.reset();
-        setSelectedTags([]);
-        setSelectedSections([]);
+        setMessage(guest ? "Guest details saved." : "Guest added to your list.");
+        if (!guest) {
+          form.reset();
+          setSelectedTags([]);
+          setSelectedSections([]);
+        }
+      } catch {
+        setError("Unable to save guest. Please try again.");
       }
     });
   }
@@ -125,16 +127,20 @@ export function GuestForm({
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await attachExistingGuestAsPlusOne(guest.id, existingGuestId);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await attachExistingGuestAsPlusOne(guest.id, existingGuestId);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setExistingGuestId("");
+        setSelectedPlusOneSections([]);
+        setPlusOneOpen(false);
+        setMessage("Existing guest attached as a plus-one.");
+        void invalidateGuestsQuery(queryClient, weddingId);
+      } catch {
+        setError("Unable to attach the existing guest. Please try again.");
       }
-      setExistingGuestId("");
-      setSelectedPlusOneSections([]);
-      setPlusOneOpen(false);
-      setMessage("Existing guest attached as a plus-one.");
-      void invalidateGuestsQuery(queryClient, weddingId);
     });
   }
 
@@ -143,19 +149,23 @@ export function GuestForm({
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await addPlusOne(guest.id, {
-        ...plusOneDraft,
-        sectionIds: selectedPlusOneSections,
-      });
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await addPlusOne(guest.id, {
+          ...plusOneDraft,
+          sectionIds: selectedPlusOneSections,
+        });
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setPlusOneDraft(emptyPlusOne);
+        setSelectedPlusOneSections([]);
+        setPlusOneOpen(false);
+        setMessage("Plus-one added.");
+        void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+      } catch {
+        setError("Unable to add plus-one. Please try again.");
       }
-      setPlusOneDraft(emptyPlusOne);
-      setSelectedPlusOneSections([]);
-      setPlusOneOpen(false);
-      setMessage("Plus-one added.");
-      void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
     });
   }
 
@@ -168,39 +178,47 @@ export function GuestForm({
     if (!guest) return;
     setError(null);
     startTransition(async () => {
-      const result = await deleteGuest(guest.id);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+      try {
+        const result = await deleteGuest(guest.id);
+        if (!result.success) {
+          setConfirmation(null);
+          setError(result.error);
+          return;
+        }
 
-      setConfirmation(null);
-      void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
-      router.push("/guests");
+        setConfirmation(null);
+        void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+        router.push("/guests");
+      } catch {
+        setConfirmation(null);
+        setError("Unable to delete guest. Please try again.");
+      }
     });
   }
 
   return (
     <form className="space-y-5" onSubmit={submit}>
       <div className="grid gap-4 sm:grid-cols-[110px_1fr_1fr]">
-        <Field label="Title" name="title" defaultValue={guest?.title ?? ""} />
+        <Field label="Title" name="title" defaultValue={guest?.title ?? ""} maxLength={30} />
         <Field
           label="First name"
           name="firstName"
           required
           defaultValue={guest?.firstName ?? ""}
+          maxLength={100}
         />
         <Field
           label="Last name"
           name="lastName"
           required
           defaultValue={guest?.lastName ?? ""}
+          maxLength={100}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Email" name="email" type="email" defaultValue={guest?.email ?? ""} />
-        <Field label="Phone" name="phone" defaultValue={guest?.phone ?? ""} />
+        <Field label="Email" name="email" type="email" defaultValue={guest?.email ?? ""} maxLength={254} />
+        <Field label="Phone" name="phone" defaultValue={guest?.phone ?? ""} maxLength={50} />
         <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
           Age group
           <Select defaultValue={guest?.ageGroup ?? "ADULT"} name="ageGroup">
@@ -227,8 +245,9 @@ export function GuestForm({
           label="Dietary requirements"
           name="dietaryRequirements"
           defaultValue={guest?.dietaryRequirements ?? ""}
+          maxLength={2000}
         />
-        <TextArea label="Notes" name="notes" defaultValue={guest?.notes ?? ""} />
+        <TextArea label="Notes" name="notes" defaultValue={guest?.notes ?? ""} maxLength={2000} />
       </div>
 
       <fieldset>
@@ -334,10 +353,10 @@ export function GuestForm({
               ) : null}
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#4A7C57]">Or create a new plus-one</p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ControlledField label="First name" required value={plusOneDraft.firstName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, firstName: value }))} />
-                <ControlledField label="Last name" required value={plusOneDraft.lastName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, lastName: value }))} />
-                <ControlledField label="Email" type="email" value={plusOneDraft.email} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, email: value }))} />
-                <ControlledField label="Phone" value={plusOneDraft.phone} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, phone: value }))} />
+                <ControlledField label="First name" maxLength={100} required value={plusOneDraft.firstName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, firstName: value }))} />
+                <ControlledField label="Last name" maxLength={100} required value={plusOneDraft.lastName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, lastName: value }))} />
+                <ControlledField label="Email" maxLength={254} type="email" value={plusOneDraft.email} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, email: value }))} />
+                <ControlledField label="Phone" maxLength={50} value={plusOneDraft.phone} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, phone: value }))} />
                 <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
                   Age group
                   <Select value={plusOneDraft.ageGroup} onChange={(event) => setPlusOneDraft((draft) => ({ ...draft, ageGroup: event.target.value }))}>
@@ -348,8 +367,8 @@ export function GuestForm({
                 </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ControlledTextArea label="Dietary requirements" value={plusOneDraft.dietaryRequirements} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, dietaryRequirements: value }))} />
-                <ControlledTextArea label="Notes" value={plusOneDraft.notes} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, notes: value }))} />
+                <ControlledTextArea label="Dietary requirements" maxLength={2000} value={plusOneDraft.dietaryRequirements} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, dietaryRequirements: value }))} />
+                <ControlledTextArea label="Notes" maxLength={2000} value={plusOneDraft.notes} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, notes: value }))} />
               </div>
               <GuestSectionSelector
                 onChange={setSelectedPlusOneSections}
@@ -364,8 +383,8 @@ export function GuestForm({
         </div>
       ) : null}
 
-      {error ? <p className="text-sm text-[#9D3F32]">{error}</p> : null}
-      {message ? <p className="text-sm text-[#2D5A27]">{message}</p> : null}
+      {error ? <p aria-live="polite" className="text-sm text-[#9D3F32]">{error}</p> : null}
+      {message ? <p aria-live="polite" className="text-sm text-[#2D5A27]">{message}</p> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         {guest ? (
@@ -408,12 +427,14 @@ function Field({
   defaultValue,
   type = "text",
   required = false,
+  maxLength,
 }: {
   label: string;
   name: string;
   defaultValue: string;
   type?: string;
   required?: boolean;
+  maxLength?: number;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
@@ -423,6 +444,7 @@ function Field({
         defaultValue={defaultValue}
         name={name}
         required={required}
+        maxLength={maxLength}
         type={type}
       />
     </label>
@@ -433,10 +455,12 @@ function TextArea({
   label,
   name,
   defaultValue,
+  maxLength,
 }: {
   label: string;
   name: string;
   defaultValue: string;
+  maxLength?: number;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
@@ -444,6 +468,7 @@ function TextArea({
       <textarea
         className="min-h-24 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm text-[#1C1C1C] outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
         defaultValue={defaultValue}
+        maxLength={maxLength}
         name={name}
       />
     </label>
@@ -487,18 +512,21 @@ function ControlledField({
   onChange,
   type = "text",
   required = false,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  maxLength?: number;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
       {label}
       <input
         className="h-10 rounded-[10px] border border-[#E8E8E3] bg-white px-3 text-sm text-[#1C1C1C] outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
         required={required}
         type={type}
@@ -512,16 +540,19 @@ function ControlledTextArea({
   label,
   value,
   onChange,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  maxLength?: number;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
       {label}
       <textarea
         className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />

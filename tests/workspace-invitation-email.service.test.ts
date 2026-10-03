@@ -27,6 +27,7 @@ import {
 } from "../src/server/services/email/workspace-invitation-email.service";
 
 const invitation = {
+  role: "OWNER" as const,
   invitedEmail: "partner@example.com",
   inviterFirstName: "Emily",
   weddingName: "Ethan & Emily's Wedding",
@@ -36,11 +37,19 @@ const invitation = {
 };
 
 describe("workspace invitation email service", () => {
+  it.each(["OWNER", "EDITOR", "VIEWER"] as const)("describes %s access in both email formats", (role) => {
+    const result = renderWeddingMemberInvitationEmail({ ...invitation, role });
+    const label = role.charAt(0) + role.slice(1).toLowerCase();
+    expect(result.html).toContain(`<strong>${label}</strong>`);
+    expect(result.text).toContain(label);
+    if (role === "VIEWER") expect(result.text).toContain("without making changes");
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("EMAIL_PROVIDER", "resend");
     vi.stubEnv("RESEND_API_KEY", "re_preview_test_key");
     vi.stubEnv("EMAIL_FROM", "Tied Forever Preview <preview@tied-forever.com>");
+    vi.stubEnv("VERCEL_ENV", "");
     mocks.resendKeys.length = 0;
     mocks.resendSend.mockResolvedValue({
       data: { id: "email_1" },
@@ -65,7 +74,7 @@ describe("workspace invitation email service", () => {
 
     const payload = mocks.resendSend.mock.calls[0]?.[0];
     expect(payload.html).toContain("Ethan &amp; Emily&#039;s Wedding");
-    expect(payload.html).toContain("Emily invited you to help manage");
+    expect(payload.html).toContain("Emily invited you to join");
     expect(payload.html).toContain("not a guest RSVP");
     expect(payload.text).toContain("1 September 2026");
   });
@@ -137,6 +146,27 @@ describe("workspace invitation email service", () => {
     expect(mocks.resendKeys).toEqual([]);
     expect(info).toHaveBeenCalled();
     info.mockRestore();
+  });
+
+  it("marks Preview invitation subjects as QA", () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+
+    expect(renderWeddingMemberInvitationEmail(invitation).subject).toBe(
+      "[QA] Emily invited you to Tied Forever",
+    );
+  });
+
+  it("does not use the development fallback on hosted deployments", async () => {
+    vi.stubEnv("EMAIL_PROVIDER", "development");
+    vi.stubEnv("VERCEL_ENV", "preview");
+
+    await expect(sendWeddingMemberInvitationEmail(invitation)).rejects.toEqual(
+      expect.objectContaining({
+        name: "WeddingMemberInvitationEmailError",
+        message:
+          "A production email provider must be configured before sending workspace invitations.",
+      }),
+    );
   });
 
   it("renders the same invitation content independently of the transport", () => {

@@ -5,6 +5,10 @@ import { WeddingRequiredState } from "@/src/components/shared/wedding-required-s
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
 import { getWeddingLocations } from "@/src/server/actions/settings/wedding-settings.actions";
 
+export const metadata = {
+  title: "Locations",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function LocationsSettingsPage() {
@@ -25,6 +29,7 @@ export default async function LocationsSettingsPage() {
       />
       {result.success ? (
         <WeddingLocationsForm
+          key={context.wedding.id}
           initialData={result.data}
           readOnly={context.role === "VIEWER"}
         />

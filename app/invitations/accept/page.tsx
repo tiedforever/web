@@ -3,9 +3,12 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { SignOutControl } from "@/src/components/auth/sign-out-button";
+import { WorkspaceInvitationRedirect } from "@/src/components/auth/workspace-invitation-redirect";
 import {
   AuthenticationRequiredError,
+  EmailVerificationRequiredError,
   getAuthenticatedUser,
+  getAccountAccessErrorCopy,
 } from "@/src/server/auth/get-authenticated-user";
 import { logger } from "@/src/server/logging/logger";
 import {
@@ -14,6 +17,16 @@ import {
   normalizeEmail,
   weddingMemberInvitationService,
 } from "@/src/server/services/workspace-invitation.service";
+import {
+  getWorkspaceInvitationAuthPath,
+} from "@/src/server/auth/safe-workspace-invitation-return";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+import { getWeddingMemberRoleLabel, weddingMemberRoles } from "@/src/types/wedding-member-role";
+
+export const metadata = {
+  title: "Workspace invitation",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -37,20 +50,40 @@ export default async function WorkspaceInvitationAcceptancePage({
   }
 
   if (workspaceInvitation.state === "ACCEPTED" && workspaceInvitation.acceptedByEmail) {
+    let acceptedByCurrentUser = false;
     try {
       const { user } = await getAuthenticatedUser();
-      if (normalizeEmail(user.email) === normalizeEmail(workspaceInvitation.acceptedByEmail)) {
-        redirect("/dashboard?invitation=already-complete");
-      }
+      acceptedByCurrentUser = normalizeEmail(user.email) === normalizeEmail(workspaceInvitation.acceptedByEmail);
     } catch (error) {
       if (!(error instanceof AuthenticationRequiredError)) {
         logger.error("[workspace-invitation] accepted invitation identity check failed", error);
       }
     }
+    if (acceptedByCurrentUser) redirect("/dashboard?invitation=already-complete");
   }
 
   if (workspaceInvitation.state !== "PENDING") {
     return <WorkspaceInvitationState {...getWorkspaceInvitationStateCopy(workspaceInvitation.state)} />;
+  }
+
+  const returnPath = getWorkspaceInvitationReturnPath(token);
+  const signInPath = returnPath
+    ? getWorkspaceInvitationAuthPath(
+        "/sign-in",
+        returnPath,
+        workspaceInvitation.invitedEmail,
+      )
+    : null;
+  const signUpPath = returnPath
+    ? getWorkspaceInvitationAuthPath(
+        "/sign-up",
+        returnPath,
+        workspaceInvitation.invitedEmail,
+      )
+    : null;
+
+  if (!returnPath || !signInPath || !signUpPath) {
+    return <WorkspaceInvitationState title="Workspace invitation link is invalid" message="This workspace invitation link is not valid." />;
   }
 
   let authenticated = false;
@@ -59,19 +92,45 @@ export default async function WorkspaceInvitationAcceptancePage({
     authenticated = true;
   } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) {
+      if (error instanceof EmailVerificationRequiredError) {
+        return (
+          <WorkspaceInvitationState
+            action={
+              <>
+                <SignOutControl
+                  label="Continue to email verification"
+                  redirectUrl={signInPath}
+                />
+                <Link
+                  className="inline-flex rounded-[10px] border border-[#D9D6C9] bg-white px-4 py-2.5 text-sm font-semibold text-[#3F413A]"
+                  href="/"
+                >
+                  Return to Tied Forever
+                </Link>
+              </>
+            }
+            message="Verify the email address on your Tied Forever account, then sign in again to continue accepting this workspace invitation."
+            title="Verify your email to continue"
+          />
+        );
+      }
+
       logger.error("[workspace-invitation] authenticated invitation check failed", error);
-      return <WorkspaceInvitationState title="Account verification required" message="Finish verifying your Tied Forever account before accepting this workspace invitation." />;
+      return (
+        <WorkspaceInvitationState
+          {...getAccountAccessErrorCopy(error)}
+          action={
+            <>
+              <a className="rounded-[10px] bg-[#2D5A27] px-4 py-2.5 text-sm font-semibold text-white" href={returnPath}>Try invitation again</a>
+              <SignOutControl label="Sign in again" redirectUrl={signInPath} />
+            </>
+          }
+        />
+      );
     }
   }
 
-  const returnPath = getWorkspaceInvitationReturnPath(token);
-  if (!returnPath) {
-    return <WorkspaceInvitationState title="Workspace invitation link is invalid" message="This workspace invitation link is not valid." />;
-  }
-
   if (!authenticated) {
-    const query = `redirect_url=${encodeURIComponent(returnPath)}&email=${encodeURIComponent(workspaceInvitation.invitedEmail ?? "")}`;
-
     return (
       <WorkspaceInvitationLayout>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2D5A27]">
@@ -81,16 +140,16 @@ export default async function WorkspaceInvitationAcceptancePage({
           Join the {workspaceInvitation.weddingName} workspace
         </h1>
         <p className="mt-3 text-sm leading-6 text-[#7A7A6E]">
-          {workspaceInvitation.inviterName} invited you to join their private Tied Forever wedding workspace as an OWNER.
+          {workspaceInvitation.inviterName} invited you to join their private Tied Forever wedding workspace as {workspaceInvitation.role === "OWNER" || workspaceInvitation.role === "EDITOR" ? "an" : "a"} {getWeddingMemberRoleLabel(workspaceInvitation.role ?? "")}. {weddingMemberRoles.find((role) => role.value === workspaceInvitation.role)?.description}
         </p>
         <p className="mt-4 rounded-lg bg-[#FBF5E6] px-3 py-2 text-sm text-[#6B5630]">
           This workspace invitation was issued to <strong>{workspaceInvitation.invitedEmail}</strong> and expires on {formatDate(workspaceInvitation.expiresAt)}.
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
-          <Link className="rounded-[10px] bg-[#2D5A27] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#245020]" href={`/sign-up?${query}`}>
+          <Link className="rounded-[10px] bg-[#2D5A27] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#245020]" href={signUpPath}>
             Create account
           </Link>
-          <Link className="rounded-[10px] border border-[#D9D6C9] bg-white px-4 py-3 text-center text-sm font-semibold text-[#3F413A] hover:bg-[#FAFAF8]" href={`/sign-in?${query}`}>
+          <Link className="rounded-[10px] border border-[#D9D6C9] bg-white px-4 py-3 text-center text-sm font-semibold text-[#3F413A] hover:bg-[#FAFAF8]" href={signInPath}>
             Sign in
           </Link>
         </div>
@@ -107,7 +166,13 @@ export default async function WorkspaceInvitationAcceptancePage({
   }
 
   if (result.ok) {
-    redirect(`/dashboard?invitation=${result.alreadyMember ? "already-complete" : "accepted"}`);
+    return (
+      <WorkspaceInvitationState
+        title="Workspace invitation accepted"
+        message="Opening your wedding workspace."
+        action={<WorkspaceInvitationRedirect destination={`/dashboard?invitation=${result.alreadyMember ? "already-complete" : "accepted"}`} />}
+      />
+    );
   }
 
   if (result.code === "EMAIL_MISMATCH") {
@@ -123,7 +188,10 @@ export default async function WorkspaceInvitationAcceptancePage({
           Sign in with the verified email address that received this workspace invitation: {result.maskedEmail}.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <SignOutControl />
+          <SignOutControl
+            label="Sign in with invited email"
+            redirectUrl={signInPath}
+          />
           <Link className="rounded-[10px] border border-[#D9D6C9] bg-white px-4 py-2.5 text-sm font-semibold text-[#3F413A]" href="/dashboard">
             Return to dashboard
           </Link>
@@ -148,7 +216,15 @@ function WorkspaceInvitationLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function WorkspaceInvitationState({ title, message }: { title: string; message: string }) {
+function WorkspaceInvitationState({
+  action,
+  title,
+  message,
+}: {
+  action?: ReactNode;
+  title: string;
+  message: string;
+}) {
   return (
     <WorkspaceInvitationLayout>
       <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9D3F32]">
@@ -156,9 +232,13 @@ function WorkspaceInvitationState({ title, message }: { title: string; message: 
       </p>
       <h1 className="mt-2 font-serif text-3xl tracking-[-0.03em] text-[#1C1C1C]">{title}</h1>
       <p className="mt-3 text-sm leading-6 text-[#7A7A6E]">{message}</p>
-      <Link className="mt-7 inline-flex rounded-[10px] bg-[#2D5A27] px-4 py-2.5 text-sm font-semibold text-white" href="/">
-        Return to Tied Forever
-      </Link>
+      {action ? (
+        <div className="mt-7 flex flex-wrap gap-3">{action}</div>
+      ) : (
+        <Link className="mt-7 inline-flex rounded-[10px] bg-[#2D5A27] px-4 py-2.5 text-sm font-semibold text-white" href="/">
+          Return to Tied Forever
+        </Link>
+      )}
     </WorkspaceInvitationLayout>
   );
 }

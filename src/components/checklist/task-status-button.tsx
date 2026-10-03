@@ -26,11 +26,16 @@ export function TaskStatusButton({
     onOptimisticChange(nextCompleted);
 
     startTransition(async () => {
-      const result = await (nextCompleted ? completeAction : reopenAction)();
+      try {
+        const result = await (nextCompleted ? completeAction : reopenAction)();
 
-      if (!result.success) {
+        if (!result.success) {
+          onOptimisticChange(completed);
+          setError(result.error);
+        }
+      } catch {
         onOptimisticChange(completed);
-        setError(result.error);
+        setError("Unable to update the task. Please try again.");
       }
     });
   }

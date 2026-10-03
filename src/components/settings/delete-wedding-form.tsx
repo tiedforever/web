@@ -21,16 +21,20 @@ export function DeleteWeddingForm({ weddingName }: DeleteWeddingFormProps) {
     setError(null);
 
     startTransition(async () => {
-      const result = await deleteActiveWedding(confirmation);
+      try {
+        const result = await deleteActiveWedding(confirmation);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        // A user may intentionally keep an account without a wedding. Return
+        // to the normal shell so the optional-onboarding flow is preserved.
+        router.push("/dashboard");
+      } catch {
+        setError("Unable to delete the wedding. Please try again.");
       }
-
-      // A user may intentionally keep an account without a wedding. Return
-      // to the normal shell so the optional-onboarding flow is preserved.
-      router.push("/dashboard");
     });
   }
 

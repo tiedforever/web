@@ -152,7 +152,6 @@ export function DelayedLoadingProvider({ children }: { children: ReactNode }) {
         {children}
         {isVisible ? (
           <div
-            aria-live="polite"
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6"
           >
             <DelayedLoadingCard />

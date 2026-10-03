@@ -62,6 +62,17 @@ function pendingInvitation(overrides: Record<string, unknown> = {}) {
 }
 
 describe("WeddingMemberInvitationService", () => {
+  it.each(["OWNER", "EDITOR", "VIEWER"] as const)("sends and stores the chosen %s role", async (role) => {
+    await service.createAndSend({ role, weddingId: "wedding_1", weddingName: "A & B", invitedEmail: "helper@example.com", invitedByUserId: "owner_1", inviterFirstName: "Owner" });
+    expect(mocks.repository.create).toHaveBeenCalledWith(expect.objectContaining({ role }));
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ role }));
+  });
+
+  it.each(["EDITOR", "VIEWER"] as const)("preserves the %s role when resending", async (role) => {
+    mocks.repository.findForWedding.mockResolvedValue(pendingInvitation({ role }));
+    await service.resend({ id: "invitation_1", weddingId: "wedding_1", weddingName: "A & B", invitedByUserId: "owner_1", inviterFirstName: "Owner" });
+    expect(mocks.repository.create).toHaveBeenCalledWith(expect.objectContaining({ role }));
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
@@ -83,6 +94,7 @@ describe("WeddingMemberInvitationService", () => {
 
   it("normalizes the email, creates an OWNER invitation, and stores a hash", async () => {
     const result = await service.createAndSend({
+        role: "OWNER",
       weddingId: "wedding_1",
       weddingName: "A & B",
       invitedEmail: " Partner@Example.COM ",
@@ -120,6 +132,7 @@ describe("WeddingMemberInvitationService", () => {
 
     await expect(
       service.createAndSend({
+        role: "OWNER",
         weddingId: "wedding_1",
         weddingName: "A & B",
         invitedEmail: "partner@example.com",
@@ -139,6 +152,7 @@ describe("WeddingMemberInvitationService", () => {
 
     await expect(
       service.createAndSend({
+        role: "OWNER",
         weddingId: "wedding_1",
         weddingName: "A & B",
         invitedEmail: "partner@example.com",
@@ -180,6 +194,7 @@ describe("WeddingMemberInvitationService", () => {
 
     await expect(
       service.createAndSend({
+        role: "OWNER",
         weddingId: "wedding_1",
         weddingName: "A & B",
         invitedEmail: "partner@example.com",
@@ -191,6 +206,23 @@ describe("WeddingMemberInvitationService", () => {
     expect(mocks.repository.create).not.toHaveBeenCalled();
   });
 
+  it("rejects non-web APP_URL schemes before creating an invitation", async () => {
+    vi.stubEnv("APP_URL", "javascript:alert(1)");
+
+    await expect(
+      service.createAndSend({
+        role: "OWNER",
+        weddingId: "wedding_1",
+        weddingName: "A & B",
+        invitedEmail: "partner@example.com",
+        invitedByUserId: "owner_1",
+        inviterFirstName: "Owner",
+      }),
+    ).rejects.toThrow("APP_URL must use http or https for workspace invitations.");
+
+    expect(mocks.repository.create).not.toHaveBeenCalled();
+  });
+
   it("keeps the invitation record valid and returns a safe message when delivery fails", async () => {
     mocks.sendEmail.mockRejectedValue(
       new WeddingMemberInvitationEmailError("raw provider failure"),
@@ -198,6 +230,7 @@ describe("WeddingMemberInvitationService", () => {
 
     await expect(
       service.createAndSend({
+        role: "OWNER",
         weddingId: "wedding_1",
         weddingName: "A & B",
         invitedEmail: "partner@example.com",

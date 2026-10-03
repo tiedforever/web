@@ -61,7 +61,7 @@ export function DashboardQueryView({
       />
 
       {query.isError ? (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E7C9C5] bg-[#FFF5F3] px-4 py-3 text-sm text-[#5C211B]">
+        <div aria-live="polite" className="flex items-center justify-between gap-4 rounded-xl border border-[#E7C9C5] bg-[#FFF5F3] px-4 py-3 text-sm text-[#5C211B]">
           <span>Live dashboard refresh failed. Showing the last available data.</span>
           <button
             className="shrink-0 font-semibold underline underline-offset-2"

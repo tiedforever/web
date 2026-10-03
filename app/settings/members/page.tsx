@@ -9,6 +9,10 @@ import {
 import { listWeddingMemberInvitations } from "@/src/server/actions/wedding/workspace-invitation.actions";
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
 
+export const metadata = {
+  title: "Members",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function MembersSettingsPage() {
@@ -27,7 +31,7 @@ export default async function MembersSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        description="See who can access this wedding workspace and invite your partner as an owner."
+        description="Manage wedding members and invite owners, editors, or viewers."
         eyebrow="Workspace settings"
         title="Members"
       />
@@ -40,7 +44,7 @@ export default async function MembersSettingsPage() {
         </div>
         <div className="mt-5">
           {memberResult.success ? (
-            <WeddingMembersList members={memberResult.data} />
+            <WeddingMembersList key={context.wedding.id} canManage={isOwner} currentUserId={context.user.id} members={memberResult.data} />
           ) : (
             <p className="rounded-lg bg-[#FFF5F3] px-3 py-2 text-sm text-[#9D3F32]">
               {memberResult.error}
@@ -51,7 +55,11 @@ export default async function MembersSettingsPage() {
 
       {isOwner ? (
         <Card className="p-5 sm:p-6">
+          {memberInvitationResult && !memberInvitationResult.success ? (
+            <p className="mb-4 rounded-lg bg-[#FFF5F3] px-3 py-2 text-sm text-[#9D3F32]">{memberInvitationResult.error}</p>
+          ) : null}
           <WorkspaceInvitationManagement
+            key={`${context.wedding.id}:${memberInvitationResult?.success ? memberInvitationResult.data.map((invitation) => `${invitation.id}-${invitation.status}`).join(",") : ""}`}
             initialMemberInvitations={
               memberInvitationResult?.success ? memberInvitationResult.data : []
             }

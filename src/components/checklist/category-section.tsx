@@ -31,7 +31,7 @@ export function CategorySection({
   return (
     <div className="relative">
       <details className="group rounded-[14px] border border-[#E8E8E3] bg-white" open>
-        <summary className={`flex cursor-pointer list-none items-center gap-3 border-b border-[#F4F4F1] px-4 py-3.5 hover:bg-[#F7F7F4] sm:px-5 ${canEdit ? "pr-24 sm:pr-28" : ""}`}>
+        <summary className={`flex cursor-pointer list-none items-center gap-3 border-b border-[#F4F4F1] px-4 py-3.5 hover:bg-[#F7F7F4] sm:px-5 ${canEdit ? "pr-36 sm:pr-36 lg:pr-28" : ""}`}>
         <span className="text-[#8A8A82] group-open:hidden">
           <Icon name="chevron-right" size={16} />
         </span>

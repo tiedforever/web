@@ -61,13 +61,13 @@ describe("deleteMyAccount", () => {
   it("keeps the account page in place when deletion is rejected", async () => {
     mocks.deleteAccount.mockRejectedValue(
       new mocks.AccountDeletionServiceError(
-        "You cannot delete your account while you own a wedding.",
+        "You are the only active owner of at least one wedding.",
       ),
     );
 
     await expect(deleteMyAccount("DELETE")).resolves.toEqual({
       success: false,
-      error: "You cannot delete your account while you own a wedding.",
+      error: "You are the only active owner of at least one wedding.",
     });
 
     expect(mocks.revalidatePath).not.toHaveBeenCalled();

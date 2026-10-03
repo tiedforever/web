@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 
 import { ConfirmDialog } from "../shared/confirm-dialog";
 import { Icon } from "../shared/icons";
@@ -32,6 +38,35 @@ export function CategoryActions({
   const [menuOpen, setMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const frame = requestAnimationFrame(() => {
+      menuRef.current?.querySelector<HTMLElement>("[role=\"menuitem\"]")?.focus();
+    });
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        menuContainerRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
+      setMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [menuOpen]);
 
   function handleDelete() {
     setError(null);
@@ -54,11 +89,50 @@ export function CategoryActions({
     });
   }
 
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const menuItems = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>("[role=\"menuitem\"]") ?? [],
+    );
+    if (menuItems.length === 0) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setMenuOpen(false);
+      menuTriggerRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "Tab") {
+      setMenuOpen(false);
+      return;
+    }
+
+    const currentIndex = menuItems.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowDown") {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % menuItems.length;
+    } else if (event.key === "ArrowUp") {
+      nextIndex = currentIndex < 0
+        ? menuItems.length - 1
+        : (currentIndex - 1 + menuItems.length) % menuItems.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = menuItems.length - 1;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    menuItems[nextIndex]?.focus();
+  }
+
   return (
     <>
-      <div className="absolute right-3 top-2 z-20 flex items-center gap-1">
+      <div className="absolute right-3 top-2 z-20 flex items-center gap-1" ref={menuContainerRef}>
         <CreateTaskForm action={createTaskAction} compact members={members} />
         <button
+          aria-controls={`category-actions-menu-${category.id}`}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-label={`Category actions for ${category.name}`}
@@ -66,12 +140,16 @@ export function CategoryActions({
           onClick={() => setMenuOpen((open) => !open)}
           title="Category actions"
           type="button"
+          ref={menuTriggerRef}
         >
           <Icon name="more" size={17} />
         </button>
         <div
           className="absolute right-0 top-full mt-1 min-w-40 rounded-lg border border-[#E8E8E3] bg-white p-1 shadow-[0_8px_24px_rgba(28,28,28,0.12)]"
           hidden={!menuOpen}
+          id={`category-actions-menu-${category.id}`}
+          onKeyDown={handleMenuKeyDown}
+          ref={menuRef}
           role="menu"
         >
           <button
@@ -114,6 +192,7 @@ export function CategoryActions({
         description="Update this checklist category."
         onClose={() => setEditOpen(false)}
         open={editOpen}
+        returnFocusRef={menuTriggerRef}
         title={`Edit ${category.name}`}
       >
         <CreateCategoryForm
@@ -139,6 +218,7 @@ export function CategoryActions({
         onConfirm={handleDelete}
         open={deleteOpen}
         pending={isPending}
+        returnFocusRef={menuTriggerRef}
         title={`Delete ${category.name}?`}
       />
     </>

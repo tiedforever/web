@@ -59,24 +59,24 @@ export function GuestsLoadingSkeleton() {
           </div>
 
           <Card className="overflow-hidden">
-            <div className="grid grid-cols-[minmax(180px,1.5fr)_minmax(140px,1fr)_minmax(100px,0.7fr)_auto] gap-4 border-b border-[#F0EFEA] bg-[#FAFAF8] px-4 py-3">
+            <div className="hidden grid-cols-[minmax(180px,1.5fr)_minmax(140px,1fr)_minmax(100px,0.7fr)_auto] gap-4 border-b border-[#F0EFEA] bg-[#FAFAF8] px-4 py-3 lg:grid">
               {Array.from({ length: 4 }, (_, index) => (
                 <SkeletonBlock className="h-3 w-20" key={index} />
               ))}
             </div>
             <div className="divide-y divide-[#F0EFEA]">
               {Array.from({ length: 6 }, (_, index) => (
-                <div className="grid grid-cols-[minmax(180px,1.5fr)_minmax(140px,1fr)_minmax(100px,0.7fr)_auto] items-center gap-4 px-4 py-4" key={index}>
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 px-4 py-4 lg:grid lg:grid-cols-[minmax(180px,1.5fr)_minmax(140px,1fr)_minmax(100px,0.7fr)_auto] lg:items-center lg:gap-4" key={index}>
+                  <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
                     <SkeletonBlock className="h-9 w-9 rounded-full" />
-                    <div className="space-y-2">
+                    <div className="min-w-0 flex-1 space-y-2 lg:flex-none">
                       <SkeletonBlock className="h-3.5 w-32" />
                       <SkeletonBlock className="h-2.5 w-24" />
                     </div>
                   </div>
-                  <SkeletonBlock className="h-3 w-24" />
-                  <SkeletonBlock className="h-6 w-16 rounded-full" />
-                  <SkeletonBlock className="h-8 w-8 rounded-lg" />
+                  <SkeletonBlock className="hidden h-3 w-24 lg:block" />
+                  <SkeletonBlock className="hidden h-6 w-16 rounded-full lg:block" />
+                  <SkeletonBlock className="h-8 w-8 shrink-0 rounded-lg" />
                 </div>
               ))}
             </div>

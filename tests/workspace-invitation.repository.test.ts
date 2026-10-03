@@ -40,6 +40,26 @@ function pendingInvitation(overrides: Record<string, unknown> = {}) {
 }
 
 describe("WeddingMemberInvitationRepository.accept", () => {
+  it.each(["EDITOR", "VIEWER"])("creates a %s membership without promoting it to owner", async (role) => {
+    mocks.tx.weddingInvitation.findUnique.mockResolvedValue(pendingInvitation({ role }));
+    await weddingMemberInvitationRepository.accept({ id: "invitation_1", weddingId: "wedding_1", userId: "user_2" });
+    expect(mocks.tx.weddingMember.create).toHaveBeenCalledWith({ data: expect.objectContaining({ role }) });
+  });
+
+  it("does not change an existing active owner's role using an older invitation", async () => {
+    mocks.tx.weddingInvitation.findUnique.mockResolvedValue(pendingInvitation({ role: "VIEWER" }));
+    mocks.tx.weddingMember.findUnique.mockResolvedValue({ id: "membership_1", role: "OWNER", status: "ACTIVE" });
+    await weddingMemberInvitationRepository.accept({ id: "invitation_1", weddingId: "wedding_1", userId: "user_2" });
+    expect(mocks.tx.weddingMember.update).not.toHaveBeenCalled();
+    expect(mocks.tx.weddingMember.create).not.toHaveBeenCalled();
+  });
+
+  it("uses the invitation role when reactivating a former member", async () => {
+    mocks.tx.weddingInvitation.findUnique.mockResolvedValue(pendingInvitation({ role: "EDITOR" }));
+    mocks.tx.weddingMember.findUnique.mockResolvedValue({ id: "membership_1", role: "OWNER", status: "LEFT" });
+    await weddingMemberInvitationRepository.accept({ id: "invitation_1", weddingId: "wedding_1", userId: "user_2" });
+    expect(mocks.tx.weddingMember.update).toHaveBeenCalledWith({ where: { id: "membership_1" }, data: expect.objectContaining({ role: "EDITOR", status: "ACTIVE" }) });
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.prisma.$transaction.mockImplementation(async (callback) =>

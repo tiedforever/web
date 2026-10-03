@@ -50,6 +50,9 @@ export function GuestsQueryView({
 
   const { guestList, sections } = data;
   const { standaloneGuests, households, tags } = guestList;
+  const hasActiveFilters = Boolean(
+    filters.search || filters.ageGroup || filters.tagId || filters.sectionId,
+  );
   const activeSections = sections.filter((section) => section.active);
   const householdGuests = households.flatMap((household) => household.guests);
   const allGuests = [...standaloneGuests, ...householdGuests];
@@ -136,6 +139,7 @@ export function GuestsQueryView({
 
       <GuestTable
         canEdit={canEdit}
+        hasActiveFilters={hasActiveFilters}
         households={households}
         key={`${filters.search}-${filters.sectionId}-${filters.ageGroup}-${filters.tagId}`}
         search={filters.search}

@@ -512,7 +512,7 @@ export async function addGuestsToHousehold(
       parsedValue(parsedHouseholdId),
       parsedValue(parsedGuestIds),
     );
-    revalidateHouseholdPaths(household.id);
+    revalidateHouseholdPaths(household.id, { dashboard: true });
     return mapHousehold(household);
   });
 }
@@ -535,7 +535,7 @@ export async function removeGuestsFromHousehold(
         parsedValue(parsedHouseholdId),
         parsedValue(parsedGuestIds),
       );
-      revalidateHouseholdPaths(household.id);
+      revalidateHouseholdPaths(household.id, { dashboard: true });
       return mapHousehold(household);
     },
   );

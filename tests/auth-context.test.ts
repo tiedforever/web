@@ -22,7 +22,11 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 vi.mock("../src/server/db/prisma", () => ({ prisma: mocks.prisma }));
 
-import { getAuthenticatedUser } from "../src/server/auth/get-authenticated-user";
+import {
+  AccountLinkConflictError,
+  EmailVerificationRequiredError,
+  getAuthenticatedUser,
+} from "../src/server/auth/get-authenticated-user";
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -74,6 +78,24 @@ describe("getAuthenticatedUser", () => {
     expect(mocks.prisma.user.updateMany).not.toHaveBeenCalled();
   });
 
+  it("surfaces incomplete email verification before syncing the profile", async () => {
+    mocks.currentUser.mockResolvedValue(
+      makeClerkUser({
+        primaryEmailAddress: {
+          emailAddress: "ada@example.com",
+          verification: { status: "unverified" },
+        },
+      }),
+    );
+
+    await expect(getAuthenticatedUser()).rejects.toBeInstanceOf(
+      EmailVerificationRequiredError,
+    );
+    expect(mocks.prisma.user.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.user.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
   it("claims an existing unlinked email record instead of creating a duplicate", async () => {
     const associatedUser = makeUser();
 
@@ -104,9 +126,7 @@ describe("getAuthenticatedUser", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "user_2", authProviderId: "clerk_2" });
 
-    await expect(getAuthenticatedUser()).rejects.toThrow(
-      "The authenticated email address is already linked to another application user.",
-    );
+    await expect(getAuthenticatedUser()).rejects.toBeInstanceOf(AccountLinkConflictError);
     expect(mocks.prisma.user.create).not.toHaveBeenCalled();
     expect(mocks.prisma.user.update).not.toHaveBeenCalled();
     expect(mocks.prisma.user.updateMany).not.toHaveBeenCalled();

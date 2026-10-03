@@ -8,6 +8,14 @@ import {
 } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
+const isProductionEnvironment =
+  process.env.NODE_ENV === "production" ||
+  process.env.VERCEL_ENV === "production";
+
+if (isProductionEnvironment) {
+  throw new Error("The development seed cannot run in Production.");
+}
+
 const DEVELOPMENT_USER_AUTH_PROVIDER_ID = "dev-user-ethan";
 const DEVELOPMENT_USER_EMAIL = "dev-user@example.local";
 const DEVELOPMENT_WEDDING_NAME = "Ethan & Emily's Wedding";

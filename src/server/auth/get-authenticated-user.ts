@@ -14,6 +14,13 @@ export class AuthenticationRequiredError extends Error {
   }
 }
 
+export class EmailVerificationRequiredError extends Error {
+  constructor() {
+    super("A verified primary email address is required.");
+    this.name = "EmailVerificationRequiredError";
+  }
+}
+
 export type AuthenticatedUser = {
   clerkUserId: string;
   user: User;
@@ -28,6 +35,34 @@ type UserIdentityReference = Pick<User, "id" | "authProviderId">;
 
 const emailConflictMessage =
   "The authenticated email address is already linked to another application user.";
+
+export class AccountLinkConflictError extends Error {
+  constructor() {
+    super(emailConflictMessage);
+    this.name = "AccountLinkConflictError";
+  }
+}
+
+export function getAccountAccessErrorCopy(error: unknown) {
+  if (error instanceof AccountLinkConflictError) {
+    return {
+      title: "Your account link needs repair",
+      message: "Your email is linked to a different account in Tied Forever. Contact support to repair the link to your existing account, then try again. Your wedding data has been preserved.",
+    };
+  }
+
+  if (error instanceof EmailVerificationRequiredError) {
+    return {
+      title: "Verify your email to continue",
+      message: "Verify the email address on your Tied Forever account, then sign in again.",
+    };
+  }
+
+  return {
+    title: "Your account could not be loaded",
+    message: "We could not load your Tied Forever account right now. Please try again.",
+  };
+}
 
 function hasUniqueConstraintCode(error: unknown): boolean {
   return (
@@ -51,9 +86,7 @@ function getClerkProfile(
   }
 
   if (primaryEmailAddress?.verification?.status !== "verified") {
-    throw new Error(
-      "The authenticated Clerk user must have a verified primary email address.",
-    );
+    throw new EmailVerificationRequiredError();
   }
 
   const firstName = clerkUser.firstName?.trim();
@@ -97,7 +130,7 @@ async function synchronizeExistingUser(
     });
 
     if (emailOwner && emailOwner.id !== user.id) {
-      throw new Error(emailConflictMessage);
+      throw new AccountLinkConflictError();
     }
   }
 
@@ -127,7 +160,7 @@ async function associateExistingEmailUser(
   // authProviderId is required by the current schema. Treat an empty legacy
   // value defensively as unlinked, but never overwrite a real Clerk identity.
   if (emailOwner.authProviderId) {
-    throw new Error(emailConflictMessage);
+    throw new AccountLinkConflictError();
   }
 
   const claimResult = await prisma.user.updateMany({
@@ -172,7 +205,7 @@ async function associateExistingEmailUser(
     return synchronizeExistingUser(associatedUser, profile);
   }
 
-  throw new Error(emailConflictMessage);
+  throw new AccountLinkConflictError();
 }
 
 async function createUserOrRecoverFromRace(

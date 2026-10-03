@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { HouseholdCreationTrigger } from "@/src/components/guests/household-creation-trigger";
+import { Breadcrumbs } from "@/src/components/shared/breadcrumbs";
 import { Icon } from "@/src/components/shared/icons";
 import { PageHeader } from "@/src/components/shared/page-header";
 import { Card, EmptyState } from "@/src/components/shared/ui";
@@ -10,6 +11,12 @@ import {
   HouseholdListRepositoryError,
   householdListRepository,
 } from "@/src/server/repositories/household-list.repository";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Households",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +44,14 @@ export default async function HouseholdsPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        breadcrumb={<Link className="hover:text-[#2D5A27]" href="/guests">Guests / Households</Link>}
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/guests", label: "Guests" },
+              { label: "Households" },
+            ]}
+          />
+        )}
         description="Keep shared postal details together and move guests between households as plans change."
         title="Households"
         actions={

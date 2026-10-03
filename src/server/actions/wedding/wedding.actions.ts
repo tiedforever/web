@@ -229,6 +229,7 @@ export async function createWedding(
           weddingId: wedding.id,
           weddingName: wedding.name,
           invitedEmail: partnerEmail,
+          role: "OWNER",
           invitedByUserId: user.id,
           inviterFirstName: user.firstName,
         });

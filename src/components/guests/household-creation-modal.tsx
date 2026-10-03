@@ -113,27 +113,31 @@ export function HouseholdCreationModal({
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result: HouseholdActionResult<HouseholdData> = await createHouseholdWithMembers({
-        name: formData.get("name"),
-        addressLineOne: formData.get("addressLineOne"),
-        addressLineTwo: formData.get("addressLineTwo"),
-        townCity: formData.get("townCity"),
-        countyRegion: formData.get("countyRegion"),
-        postcode: formData.get("postcode"),
-        country: formData.get("country"),
-        notes: formData.get("notes"),
-        memberCount,
-        members,
-      });
+      try {
+        const result: HouseholdActionResult<HouseholdData> = await createHouseholdWithMembers({
+          name: formData.get("name"),
+          addressLineOne: formData.get("addressLineOne"),
+          addressLineTwo: formData.get("addressLineTwo"),
+          townCity: formData.get("townCity"),
+          countyRegion: formData.get("countyRegion"),
+          postcode: formData.get("postcode"),
+          country: formData.get("country"),
+          notes: formData.get("notes"),
+          memberCount,
+          members,
+        });
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        reset();
+        onClose();
+        void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+      } catch {
+        setError("Unable to create household. Please try again.");
       }
-
-      reset();
-      onClose();
-      void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
     });
   }
 
@@ -149,15 +153,15 @@ export function HouseholdCreationModal({
         <section className="space-y-4">
           <SectionHeading title="Shared address" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field defaultValue="" label="Household name" name="name" required />
-            <Field defaultValue="United Kingdom" label="Country" name="country" required />
-            <Field defaultValue="" label="Address line one" name="addressLineOne" required />
-            <Field defaultValue="" label="Address line two" name="addressLineTwo" />
-            <Field defaultValue="" label="Town or city" name="townCity" required />
-            <Field defaultValue="" label="County or region" name="countyRegion" />
-            <Field defaultValue="" label="Postcode" name="postcode" required />
+            <Field defaultValue="" label="Household name" maxLength={150} name="name" required />
+            <Field defaultValue="United Kingdom" label="Country" maxLength={100} name="country" required />
+            <Field defaultValue="" label="Address line one" maxLength={200} name="addressLineOne" required />
+            <Field defaultValue="" label="Address line two" maxLength={200} name="addressLineTwo" />
+            <Field defaultValue="" label="Town or city" maxLength={100} name="townCity" required />
+            <Field defaultValue="" label="County or region" maxLength={100} name="countyRegion" />
+            <Field defaultValue="" label="Postcode" maxLength={30} name="postcode" required />
           </div>
-          <TextArea defaultValue="" label="Notes" name="notes" />
+          <TextArea defaultValue="" label="Notes" maxLength={2000} name="notes" />
         </section>
 
         <section className="space-y-4 border-t border-[#F0EFEA] pt-6">
@@ -192,7 +196,7 @@ export function HouseholdCreationModal({
           </div>
         </section>
 
-        {error ? <p className="text-sm text-[#9D3F32]">{error}</p> : null}
+        {error ? <p aria-live="polite" className="text-sm text-[#9D3F32]">{error}</p> : null}
         <div className="flex justify-end gap-2 border-t border-[#F0EFEA] pt-4">
           <Button disabled={isPending} onClick={close} type="button" variant="ghost">Cancel</Button>
           <Button disabled={isPending} type="submit" variant="primary">
@@ -233,11 +237,11 @@ function MemberFields({
         {primary ? <span className="rounded-full bg-[#EAF0E8] px-2 py-1 text-[10px] font-semibold text-[#2D5A27]">Primary</span> : null}
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {primary ? <Field defaultValue={member.title} label="Title" name={`member-${index}-title`} onChange={(event) => onChange({ title: event.target.value })} /> : null}
-        <Field defaultValue={member.firstName} label="First name" name={`member-${index}-firstName`} onChange={(event) => onChange({ firstName: event.target.value })} required />
-        <Field defaultValue={member.lastName} label="Last name" name={`member-${index}-lastName`} onChange={(event) => onChange({ lastName: event.target.value })} required />
-        <Field defaultValue={member.email} label="Email" name={`member-${index}-email`} onChange={(event) => onChange({ email: event.target.value })} type="email" />
-        <Field defaultValue={member.phone} label="Phone" name={`member-${index}-phone`} onChange={(event) => onChange({ phone: event.target.value })} />
+        {primary ? <Field defaultValue={member.title} label="Title" maxLength={30} name={`member-${index}-title`} onChange={(event) => onChange({ title: event.target.value })} /> : null}
+        <Field defaultValue={member.firstName} label="First name" maxLength={100} name={`member-${index}-firstName`} onChange={(event) => onChange({ firstName: event.target.value })} required />
+        <Field defaultValue={member.lastName} label="Last name" maxLength={100} name={`member-${index}-lastName`} onChange={(event) => onChange({ lastName: event.target.value })} required />
+        <Field defaultValue={member.email} label="Email" maxLength={254} name={`member-${index}-email`} onChange={(event) => onChange({ email: event.target.value })} type="email" />
+        <Field defaultValue={member.phone} label="Phone" maxLength={50} name={`member-${index}-phone`} onChange={(event) => onChange({ phone: event.target.value })} />
         <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
           Age group
           <Select onChange={(event) => onChange({ ageGroup: event.target.value })} value={member.ageGroup}>
@@ -248,8 +252,8 @@ function MemberFields({
         </label>
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TextArea defaultValue={member.dietaryRequirements} label="Dietary requirements" name={`member-${index}-dietaryRequirements`} onChange={(event) => onChange({ dietaryRequirements: event.target.value })} />
-        <TextArea defaultValue={member.notes} label="Notes" name={`member-${index}-notes`} onChange={(event) => onChange({ notes: event.target.value })} />
+        <TextArea defaultValue={member.dietaryRequirements} label="Dietary requirements" maxLength={2000} name={`member-${index}-dietaryRequirements`} onChange={(event) => onChange({ dietaryRequirements: event.target.value })} />
+        <TextArea defaultValue={member.notes} label="Notes" maxLength={2000} name={`member-${index}-notes`} onChange={(event) => onChange({ notes: event.target.value })} />
       </div>
       <fieldset className="mt-4">
         <legend className="text-xs font-medium text-[#6B6B63]">Tags</legend>
@@ -297,6 +301,7 @@ function Field({
   defaultValue,
   type = "text",
   required = false,
+  maxLength,
   onChange,
 }: {
   label: string;
@@ -304,12 +309,13 @@ function Field({
   defaultValue: string;
   type?: string;
   required?: boolean;
+  maxLength?: number;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
       {label}
-      <Input defaultValue={defaultValue} name={name} onChange={onChange} required={required} type={type} />
+      <Input defaultValue={defaultValue} maxLength={maxLength} name={name} onChange={onChange} required={required} type={type} />
     </label>
   );
 }
@@ -318,17 +324,19 @@ function TextArea({
   label,
   name,
   defaultValue,
+  maxLength,
   onChange,
 }: {
   label: string;
   name: string;
   defaultValue: string;
+  maxLength?: number;
   onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void;
 }) {
   return (
     <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
       {label}
-      <textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" defaultValue={defaultValue} name={name} onChange={onChange} />
+      <textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" defaultValue={defaultValue} maxLength={maxLength} name={name} onChange={onChange} />
     </label>
   );
 }

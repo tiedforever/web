@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GuestCreationTrigger } from "@/src/components/guests/guest-creation-trigger";
 import { HouseholdMembers } from "@/src/components/guests/household-members";
 import { HouseholdForm } from "@/src/components/guests/household-form";
+import { Breadcrumbs } from "@/src/components/shared/breadcrumbs";
 import { Icon } from "@/src/components/shared/icons";
 import { PageHeader } from "@/src/components/shared/page-header";
 import { Badge, Card } from "@/src/components/shared/ui";
@@ -12,6 +13,12 @@ import { getHousehold } from "@/src/server/actions/guests/household.actions";
 import { getGuestTags } from "@/src/server/actions/guests/guest-tag.actions";
 import { getWeddingSections } from "@/src/server/actions/settings/wedding-section.actions";
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Household details",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +58,15 @@ export default async function HouseholdDetailPage({
   return (
     <div className="space-y-8">
       <PageHeader
-        breadcrumb={<Link className="hover:text-[#2D5A27]" href="/guests/households">Guests / Households</Link>}
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/guests", label: "Guests" },
+              { href: "/guests/households", label: "Households" },
+              { label: "Household details" },
+            ]}
+          />
+        )}
         description="Shared postal details and the guests currently linked to this household."
         title={household.name}
         actions={
@@ -118,6 +133,9 @@ function HouseholdError({ message }: { message: string }) {
     <Card className="border-[#E7C9C5] bg-[#FFF5F3] p-6 text-[#5C211B]">
       <p className="text-sm font-semibold">Household unavailable</p>
       <p className="mt-2 text-sm leading-6">{message}</p>
+      <Link className="mt-4 inline-flex text-sm font-semibold text-[#2D5A27] hover:underline" href="/guests/households">
+        Return to households
+      </Link>
     </Card>
   );
 }

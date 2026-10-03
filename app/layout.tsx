@@ -4,15 +4,23 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 import { AuthBoundary } from "@/src/components/auth/auth-boundary";
+import type { AccountAccessError } from "@/src/components/auth/account-access-state";
 import { QueryProvider } from "@/src/components/providers/query-provider";
 import { type AppShellContext } from "@/src/components/shared/app-shell";
 import { getOnboardingState } from "@/src/server/auth/get-onboarding-state";
 import {
   AuthenticationRequiredError,
   getAuthenticatedUser,
+  getAccountAccessErrorCopy,
 } from "@/src/server/auth/get-authenticated-user";
 import { getActiveWedding } from "@/src/server/auth/get-active-wedding";
 import { logger } from "@/src/server/logging/logger";
+import {
+  NO_INDEX_ROBOTS,
+  PRODUCTION_ORIGIN,
+  SITE_DESCRIPTION,
+  isProductionIndexable,
+} from "@/src/seo/site-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,11 +34,19 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   applicationName: "Tied Forever",
-  title: "Tied Forever Wedding Planner",
-  description: "Plan every detail of your wedding with Tied Forever.",
+  metadataBase: new URL(PRODUCTION_ORIGIN),
+  title: {
+    default: "Tied Forever",
+    template: "%s | Tied Forever",
+  },
+  description: SITE_DESCRIPTION,
+  robots: isProductionIndexable()
+    ? { index: true, follow: true }
+    : NO_INDEX_ROBOTS,
   openGraph: {
     title: "Tied Forever Wedding Planner",
-    description: "Plan every detail of your wedding with Tied Forever.",
+    description: SITE_DESCRIPTION,
+    url: PRODUCTION_ORIGIN,
     siteName: "Tied Forever",
     type: "website",
   },
@@ -66,6 +82,7 @@ async function getShellContext(): Promise<AppShellContext | null> {
     }
 
     logger.error("[layout] active wedding context load failed", error);
+    throw error;
   }
 
   let authenticatedUser: Awaited<ReturnType<typeof getAuthenticatedUser>> | null =
@@ -77,6 +94,7 @@ async function getShellContext(): Promise<AppShellContext | null> {
     } catch (error) {
       if (!(error instanceof AuthenticationRequiredError)) {
         logger.error("[layout] authenticated user load failed", error);
+        throw error;
       }
 
       return null;
@@ -135,7 +153,7 @@ async function getShellContext(): Promise<AppShellContext | null> {
         [user.firstName, user.lastName].filter(Boolean).join(" ") || fallbackName,
       userEmail: user.email,
       userInitials:
-        `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() || "EA",
+        `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() || "TF",
       profileImageUrl: user.profileImageUrl,
     },
   };
@@ -146,7 +164,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const context = await getShellContext();
+  let context: AppShellContext | null = null;
+  let accountError: AccountAccessError | undefined;
+  try {
+    context = await getShellContext();
+  } catch (error) {
+    accountError = getAccountAccessErrorCopy(error);
+  }
 
   return (
     <html
@@ -154,9 +178,9 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <QueryProvider>
-            <AuthBoundary context={context}>{children}</AuthBoundary>
+            <AuthBoundary accountError={accountError} context={context}>{children}</AuthBoundary>
           </QueryProvider>
         </ClerkProvider>
       </body>

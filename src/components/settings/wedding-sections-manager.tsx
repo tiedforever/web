@@ -60,19 +60,23 @@ export function WeddingSectionsManager({
     if (readOnly) return;
 
     startTransition(async () => {
-      const result = await createWeddingSection({
-        name: newName,
-        description: newDescription,
-      });
+      try {
+        const result = await createWeddingSection({
+          name: newName,
+          description: newDescription,
+        });
 
-      if (
-        applyResult(result, (data) => {
-          setSections(data);
-          setNewName("");
-          setNewDescription("");
-        })
-      ) {
-        setMessage("Wedding day section added.");
+        if (
+          applyResult(result, (data) => {
+            setSections(data);
+            setNewName("");
+            setNewDescription("");
+          })
+        ) {
+          setMessage("Wedding day section added.");
+        }
+      } catch {
+        setError("Unable to save wedding day sections. Please try again.");
       }
     });
   }
@@ -81,9 +85,13 @@ export function WeddingSectionsManager({
     if (readOnly) return;
 
     startTransition(async () => {
-      const result = await initializeWeddingSections();
-      if (applyResult(result, (data) => setSections(data))) {
-        setMessage("Default wedding day sections added.");
+      try {
+        const result = await initializeWeddingSections();
+        if (applyResult(result, (data) => setSections(data))) {
+          setMessage("Default wedding day sections added.");
+        }
+      } catch {
+        setError("Unable to save wedding day sections. Please try again.");
       }
     });
   }
@@ -95,13 +103,17 @@ export function WeddingSectionsManager({
     if (!section) return;
 
     startTransition(async () => {
-      const result = await updateWeddingSection(sectionId, {
-        name: section.name,
-        description: section.description,
-      });
+      try {
+        const result = await updateWeddingSection(sectionId, {
+          name: section.name,
+          description: section.description,
+        });
 
-      if (applyResult(result, (data) => setSections(data))) {
-        setMessage("Wedding day section saved.");
+        if (applyResult(result, (data) => setSections(data))) {
+          setMessage("Wedding day section saved.");
+        }
+      } catch {
+        setError("Unable to save wedding day sections. Please try again.");
       }
     });
   }
@@ -110,9 +122,13 @@ export function WeddingSectionsManager({
     if (readOnly) return;
 
     startTransition(async () => {
-      const result = await setWeddingSectionActive(sectionId, active);
-      if (applyResult(result, (data) => setSections(data))) {
-        setMessage(active ? "Section activated." : "Section deactivated.");
+      try {
+        const result = await setWeddingSectionActive(sectionId, active);
+        if (applyResult(result, (data) => setSections(data))) {
+          setMessage(active ? "Section activated." : "Section deactivated.");
+        }
+      } catch {
+        setError("Unable to save wedding day sections. Please try again.");
       }
     });
   }
@@ -129,11 +145,15 @@ export function WeddingSectionsManager({
     nextSections.splice(nextIndex, 0, section);
 
     startTransition(async () => {
-      const result = await reorderWeddingSections(
-        nextSections.map((candidate) => candidate.id),
-      );
-      if (applyResult(result, (data) => setSections(data))) {
-        setMessage("Wedding day section order saved.");
+      try {
+        const result = await reorderWeddingSections(
+          nextSections.map((candidate) => candidate.id),
+        );
+        if (applyResult(result, (data) => setSections(data))) {
+          setMessage("Wedding day section order saved.");
+        }
+      } catch {
+        setError("Unable to save wedding day section order. Please try again.");
       }
     });
   }
@@ -143,10 +163,18 @@ export function WeddingSectionsManager({
 
     const sectionId = deleteId;
     startTransition(async () => {
-      const result = await deleteWeddingSection(sectionId);
-      if (applyResult(result, (data) => setSections(data))) {
+      try {
+        const result = await deleteWeddingSection(sectionId);
+        const succeeded = applyResult(result, (data) => setSections(data));
+        if (succeeded) {
+          setDeleteId(null);
+          setMessage("Wedding day section deleted.");
+        } else {
+          setDeleteId(null);
+        }
+      } catch {
         setDeleteId(null);
-        setMessage("Wedding day section deleted.");
+        setError("Unable to delete the wedding day section. Please try again.");
       }
     });
   }
@@ -199,6 +227,7 @@ export function WeddingSectionsManager({
                   maxLength={MAX_SECTION_NAME_LENGTH}
                   onChange={(event) => setNewName(event.target.value)}
                   placeholder="For example, Evening reception"
+                  required
                   value={newName}
                 />
               </label>
@@ -283,6 +312,7 @@ export function WeddingSectionsManager({
                           disabled={isPending}
                           maxLength={MAX_SECTION_NAME_LENGTH}
                           onChange={(event) => updateSectionField(section.id, "name", event.target.value)}
+                          required
                           value={section.name}
                         />
                       </label>

@@ -49,16 +49,20 @@ export function WeddingGeneralForm({
     setMessage(null);
     setError(null);
     startTransition(async () => {
-      const result: WeddingSettingsActionResult<WeddingGeneralSettingsData> =
-        await updateWeddingGeneralSettings(form);
+      try {
+        const result: WeddingSettingsActionResult<WeddingGeneralSettingsData> =
+          await updateWeddingGeneralSettings(form);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        setForm(result.data);
+        setMessage("General wedding settings saved.");
+      } catch {
+        setError("Unable to save general wedding settings. Please try again.");
       }
-
-      setForm(result.data);
-      setMessage("General wedding settings saved.");
     });
   }
 
@@ -78,6 +82,7 @@ export function WeddingGeneralForm({
               disabled={readOnly}
               maxLength={120}
               onChange={(event) => updateField("name", event.target.value)}
+              required
               value={form.name}
             />
           </Field>
@@ -85,6 +90,7 @@ export function WeddingGeneralForm({
             <Input
               disabled={readOnly}
               onChange={(event) => updateField("weddingDate", event.target.value)}
+              required
               type="date"
               value={form.weddingDate}
             />
@@ -94,6 +100,7 @@ export function WeddingGeneralForm({
               disabled={readOnly}
               maxLength={100}
               onChange={(event) => updateField("partnerOneName", event.target.value)}
+              required
               value={form.partnerOneName}
             />
           </Field>
@@ -102,6 +109,7 @@ export function WeddingGeneralForm({
               disabled={readOnly}
               maxLength={100}
               onChange={(event) => updateField("partnerTwoName", event.target.value)}
+              required
               value={form.partnerTwoName}
             />
           </Field>
@@ -117,6 +125,7 @@ export function WeddingGeneralForm({
               <Select
                 disabled={readOnly}
                 onChange={(event) => updateField("timezone", event.target.value)}
+                required
                 value={form.timezone}
               >
                 {timezones.map((timezone) => (
@@ -129,6 +138,7 @@ export function WeddingGeneralForm({
                 disabled={readOnly}
                 maxLength={3}
                 onChange={(event) => updateField("currencyCode", event.target.value.toUpperCase())}
+                required
                 value={form.currencyCode}
               />
             </Field>

@@ -3,6 +3,12 @@ import { Card } from "@/src/components/shared/ui";
 import { parseGuestListFilters } from "@/src/server/repositories/guest-list.repository";
 import { measurePerformance } from "@/src/server/logging/performance";
 import { normalizeGuestQueryFilters } from "@/src/types/guests";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Guests",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +36,7 @@ async function renderGuestsPage({
   }
 
   return (
-    <GuestsWorkspaceView filters={normalizeGuestQueryFilters(parsedFilters.value)} />
+      <GuestsWorkspaceView filters={normalizeGuestQueryFilters(parsedFilters.value)} />
   );
 }
 

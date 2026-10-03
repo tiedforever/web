@@ -106,22 +106,29 @@ export class AccountDeletionService {
           );
         }
 
-        const ownedWedding = await tx.weddingMember.findFirst({
+        const soleOwnedWedding = await tx.weddingMember.findFirst({
           where: {
             userId,
             role: WeddingMemberRole.OWNER,
             status: MembershipStatus.ACTIVE,
+            wedding: {
+              members: {
+                none: {
+                  userId: { not: userId },
+                  role: WeddingMemberRole.OWNER,
+                  status: MembershipStatus.ACTIVE,
+                },
+              },
+            },
           },
           select: { id: true },
         });
 
-        if (ownedWedding) {
-          // Ownership transfer is deliberately not implicit. Deleting an owner
-          // could leave a wedding without an active owner, so the account must
-          // be blocked until the user deletes those weddings or completes an
-          // explicit ownership-transfer workflow in a future feature.
+        if (soleOwnedWedding) {
+          // Every owned wedding must retain another active owner. Pending
+          // invitations and inactive memberships do not preserve ownership.
           throw new AccountDeletionServiceError(
-            "You cannot delete your account while you own a wedding. Delete those weddings or arrange ownership transfer first.",
+            "You are the only active owner of at least one wedding. Add another owner or delete those weddings before deleting your account.",
           );
         }
 
@@ -170,6 +177,10 @@ export class AccountDeletionService {
           acceptedMemberInvitationIds: acceptedMemberInvitations.map(({ id }) => id),
           assignedTasks,
         };
+      }, {
+        // Prevent two owners deleting concurrently from each observing the
+        // other as the remaining owner and leaving the wedding ownerless.
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (error) {
       if (error instanceof AccountDeletionServiceError) throw error;

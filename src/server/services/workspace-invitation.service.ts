@@ -17,6 +17,7 @@ import {
 } from "../repositories/workspace-invitation.repository";
 import { getAuthenticatedUser } from "../auth/get-authenticated-user";
 import { logger } from "../logging/logger";
+import { isWeddingMemberRole } from "@/src/types/wedding-member-role";
 
 export const WEDDING_MEMBER_INVITATION_EXPIRY_DAYS = 7;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
@@ -25,6 +26,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export type PublicWeddingMemberInvitation = {
   state: "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED" | "INVALID";
   invitedEmail: string | null;
+  role: WeddingMemberRole | null;
   acceptedByEmail: string | null;
   maskedEmail: string | null;
   weddingName: string | null;
@@ -58,9 +60,14 @@ function createRawToken() {
 function getWorkspaceInvitationUrl(token: string) {
   const configuredAppUrl = process.env.APP_URL?.trim();
   const isProduction = process.env.NODE_ENV === "production";
+  const vercelEnvironment = process.env.VERCEL_ENV?.trim().toLowerCase();
+  const isHostedDeployment =
+    vercelEnvironment === "production" || vercelEnvironment === "preview";
+  const isVercelProduction = vercelEnvironment === "production";
+  const isVercelPreview = vercelEnvironment === "preview";
   const provider = process.env.EMAIL_PROVIDER?.trim().toLowerCase();
 
-  if (!configuredAppUrl && (isProduction || provider === "resend")) {
+  if (!configuredAppUrl && (isProduction || isHostedDeployment || provider === "resend")) {
     logger.error("[workspace-invitation] APP_URL is missing for invitation URLs");
     throw new WeddingMemberInvitationServiceError(
       "APP_URL must be configured before sending workspace invitations.",
@@ -72,12 +79,33 @@ function getWorkspaceInvitationUrl(token: string) {
   try {
     const parsedAppUrl = new URL(appUrl);
 
+    if (!['http:', 'https:'].includes(parsedAppUrl.protocol)) {
+      throw new WeddingMemberInvitationServiceError(
+        "APP_URL must use http or https for workspace invitations.",
+      );
+    }
+
     if (
-      isProduction &&
+      (isProduction || isHostedDeployment) &&
       ["localhost", "127.0.0.1", "::1"].includes(parsedAppUrl.hostname)
     ) {
       throw new WeddingMemberInvitationServiceError(
         "APP_URL must point to the deployed application in production.",
+      );
+    }
+
+    if (
+      isVercelProduction &&
+      parsedAppUrl.origin !== "https://tied-forever.com"
+    ) {
+      throw new WeddingMemberInvitationServiceError(
+        "APP_URL must point to https://tied-forever.com in the Production deployment.",
+      );
+    }
+
+    if (isVercelPreview && parsedAppUrl.origin === "https://tied-forever.com") {
+      throw new WeddingMemberInvitationServiceError(
+        "APP_URL must point to the QA application in the Preview deployment.",
       );
     }
 
@@ -120,6 +148,7 @@ export async function getPublicWorkspaceInvitation(rawToken: string): Promise<Pu
   if (!TOKEN_PATTERN.test(rawToken)) {
     return {
       state: "INVALID",
+      role: null,
       invitedEmail: null,
       acceptedByEmail: null,
       maskedEmail: null,
@@ -134,6 +163,7 @@ export async function getPublicWorkspaceInvitation(rawToken: string): Promise<Pu
   if (!workspaceInvitation) {
     return {
       state: "INVALID",
+      role: null,
       invitedEmail: null,
       acceptedByEmail: null,
       maskedEmail: null,
@@ -151,6 +181,7 @@ export async function getPublicWorkspaceInvitation(rawToken: string): Promise<Pu
 
   return {
     state: mapWorkspaceInvitationState(status),
+    role: workspaceInvitation.role,
     invitedEmail: status === WeddingMemberInvitationStatus.PENDING ? workspaceInvitation.invitedEmail : null,
     acceptedByEmail: workspaceInvitation.acceptedBy?.email ?? null,
     maskedEmail: maskEmail(workspaceInvitation.invitedEmail),
@@ -173,10 +204,14 @@ export class WeddingMemberInvitationService {
     weddingId: string;
     weddingName: string;
     invitedEmail: string;
+    role: WeddingMemberRole;
     invitedByUserId: string;
     inviterFirstName: string;
   }): Promise<WorkspaceInvitationDeliveryResult> {
     const invitedEmail = normalizeEmail(input.invitedEmail);
+    if (!isWeddingMemberRole(input.role)) {
+      throw new WeddingMemberInvitationServiceError("Choose Owner, Editor, or Viewer for the member invitation.");
+    }
 
     if (!isValidEmail(invitedEmail)) {
       throw new WeddingMemberInvitationServiceError("Enter a valid member invitation email address.");
@@ -213,7 +248,7 @@ export class WeddingMemberInvitationService {
     const memberInvitation = await weddingMemberInvitationRepository.create({
       weddingId: input.weddingId,
       invitedEmail,
-      role: WeddingMemberRole.OWNER,
+      role: input.role,
       tokenHash: hashToken(rawToken),
       expiresAt,
       invitedByUserId: input.invitedByUserId,
@@ -222,6 +257,7 @@ export class WeddingMemberInvitationService {
     try {
       const delivery = await sendWeddingMemberInvitationEmail({
         invitedEmail,
+        role: input.role,
         inviterFirstName: input.inviterFirstName,
         weddingName: input.weddingName,
         workspaceInvitationUrl,
@@ -235,7 +271,7 @@ export class WeddingMemberInvitationService {
         developmentWorkspaceInvitationUrl: delivery.developmentFallback ? workspaceInvitationUrl : null,
         message: delivery.sent
           ? "The workspace invitation email was sent."
-          : "The workspace invitation was created. The development email fallback logged the invitation URL on the server.",
+          : "The workspace invitation was created. Open the development invitation link below to test it.",
       };
     } catch (error) {
       if (!(error instanceof WeddingMemberInvitationEmailError)) throw error;
@@ -276,6 +312,7 @@ export class WeddingMemberInvitationService {
       weddingId: input.weddingId,
       weddingName: input.weddingName,
       invitedEmail: existing.invitedEmail,
+      role: existing.role,
       invitedByUserId: input.invitedByUserId,
       inviterFirstName: input.inviterFirstName,
     });

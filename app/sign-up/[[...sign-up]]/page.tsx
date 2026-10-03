@@ -2,8 +2,15 @@ import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
 import {
   getSafeWorkspaceInvitationEmail,
+  getWorkspaceInvitationAuthPath,
   getSafeWorkspaceInvitationReturnPath,
 } from "@/src/server/auth/safe-workspace-invitation-return";
+import { NO_INDEX_ROBOTS } from "@/src/seo/site-metadata";
+
+export const metadata = {
+  title: "Sign Up",
+  robots: NO_INDEX_ROBOTS,
+};
 
 export default async function SignUpPage({
   searchParams,
@@ -17,6 +24,9 @@ export default async function SignUpPage({
   const emailValue = Array.isArray(params.email) ? params.email[0] : params.email;
   const workspaceInvitationRedirect = getSafeWorkspaceInvitationReturnPath(redirectValue);
   const workspaceInvitationEmail = getSafeWorkspaceInvitationEmail(emailValue);
+  const workspaceInvitationSignInUrl = workspaceInvitationRedirect
+    ? getWorkspaceInvitationAuthPath("/sign-in", workspaceInvitationRedirect, workspaceInvitationEmail)
+    : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FAFAF8] px-4 py-12">
@@ -42,7 +52,9 @@ export default async function SignUpPage({
           }
           path="/sign-up"
           routing="path"
-          signInUrl="/sign-in"
+          signInFallbackRedirectUrl={workspaceInvitationRedirect ?? "/dashboard"}
+          signInForceRedirectUrl={workspaceInvitationRedirect ?? undefined}
+          signInUrl={workspaceInvitationSignInUrl ?? "/sign-in"}
         />
       </div>
     </main>

@@ -566,7 +566,7 @@ export async function updateGuest(
       tagIds,
       sectionIds,
     );
-    revalidateGuestPaths(guest.id);
+    revalidateGuestPaths(guest.id, { dashboard: true });
     return mapGuest(guest);
   });
 }
@@ -615,7 +615,7 @@ export async function assignGuestToHousehold(
       parsedValue(parsedGuestId),
       parsedValue(parsedHouseholdId),
     );
-    revalidateGuestPaths(guest.id);
+    revalidateGuestPaths(guest.id, { dashboard: true });
     return mapGuest(guest);
   });
 }
@@ -631,7 +631,7 @@ export async function removeGuestFromHousehold(
       weddingId,
       parsedValue(parsedGuestId),
     );
-    revalidateGuestPaths(guest.id);
+    revalidateGuestPaths(guest.id, { dashboard: true });
     return mapGuest(guest);
   });
 }

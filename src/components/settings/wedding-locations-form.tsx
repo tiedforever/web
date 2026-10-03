@@ -36,16 +36,20 @@ export function WeddingLocationsForm({
     setMessage(null);
     setError(null);
     startTransition(async () => {
-      const result: WeddingSettingsActionResult<WeddingLocationsData> =
-        await updateWeddingLocations(form);
+      try {
+        const result: WeddingSettingsActionResult<WeddingLocationsData> =
+          await updateWeddingLocations(form);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        setForm(result.data);
+        setMessage("Wedding locations saved.");
+      } catch {
+        setError("Unable to save wedding locations. Please try again.");
       }
-
-      setForm(result.data);
-      setMessage("Wedding locations saved.");
     });
   }
 

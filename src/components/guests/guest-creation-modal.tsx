@@ -114,34 +114,38 @@ export function GuestCreationModal({
       .filter((tagId): tagId is string => typeof tagId === "string");
 
     startTransition(async () => {
-      const result: GuestActionResult<GuestActionData> = await createGuest({
-        title: formData.get("title"),
-        firstName: formData.get("firstName"),
-        lastName: formData.get("lastName"),
-        email: formData.get("email"),
-        phone: formData.get("phone"),
-        ageGroup: formData.get("ageGroup"),
-        householdId: lockedHouseholdId ?? formData.get("householdId"),
-        dietaryRequirements: formData.get("dietaryRequirements"),
-        notes: formData.get("notes"),
-        tagIds,
-        sectionIds: selectedSections,
-        plusOne: plusOneOpen
-          ? { ...plusOneDraft, sectionIds: selectedPlusOneSections }
-          : undefined,
-      });
+      try {
+        const result: GuestActionResult<GuestActionData> = await createGuest({
+          title: formData.get("title"),
+          firstName: formData.get("firstName"),
+          lastName: formData.get("lastName"),
+          email: formData.get("email"),
+          phone: formData.get("phone"),
+          ageGroup: formData.get("ageGroup"),
+          householdId: lockedHouseholdId ?? formData.get("householdId"),
+          dietaryRequirements: formData.get("dietaryRequirements"),
+          notes: formData.get("notes"),
+          tagIds,
+          sectionIds: selectedSections,
+          plusOne: plusOneOpen
+            ? { ...plusOneDraft, sectionIds: selectedPlusOneSections }
+            : undefined,
+        });
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        form.reset();
+        setPlusOneDraft(emptyPlusOne);
+        setSelectedPlusOneSections([]);
+        setPlusOneOpen(false);
+        performClose();
+        void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+      } catch {
+        setError("Unable to add guest. Please try again.");
       }
-
-      form.reset();
-      setPlusOneDraft(emptyPlusOne);
-      setSelectedPlusOneSections([]);
-      setPlusOneOpen(false);
-      performClose();
-      void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
     });
   }
 
@@ -155,13 +159,13 @@ export function GuestCreationModal({
       >
         <form className="space-y-5" onSubmit={submit} ref={formRef}>
         <div className="grid gap-4 sm:grid-cols-[100px_1fr_1fr]">
-          <Field defaultValue="" label="Title" name="title" />
-          <Field autoFocus defaultValue="" label="First name" name="firstName" required />
-          <Field defaultValue="" label="Last name" name="lastName" required />
+          <Field defaultValue="" label="Title" name="title" maxLength={30} />
+          <Field autoFocus defaultValue="" label="First name" name="firstName" maxLength={100} required />
+          <Field defaultValue="" label="Last name" name="lastName" maxLength={100} required />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field defaultValue="" label="Email" name="email" type="email" />
-          <Field defaultValue="" label="Phone" name="phone" />
+          <Field defaultValue="" label="Email" maxLength={254} name="email" type="email" />
+          <Field defaultValue="" label="Phone" maxLength={50} name="phone" />
           <SelectField defaultValue="ADULT" label="Age group" name="ageGroup">
             <option value="ADULT">Adult</option>
             <option value="CHILD">Child</option>
@@ -182,8 +186,8 @@ export function GuestCreationModal({
           )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextArea defaultValue="" label="Dietary requirements" name="dietaryRequirements" />
-          <TextArea defaultValue="" label="Notes" name="notes" />
+          <TextArea defaultValue="" label="Dietary requirements" maxLength={2000} name="dietaryRequirements" />
+          <TextArea defaultValue="" label="Notes" maxLength={2000} name="notes" />
         </div>
         <TagFields tags={tags} />
         <GuestSectionSelector
@@ -203,10 +207,10 @@ export function GuestCreationModal({
           {plusOneOpen ? (
             <div className="mt-4 space-y-4 border-t border-[#DDEBD9] pt-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <ControlledField label="First name" required value={plusOneDraft.firstName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, firstName: value }))} />
-                <ControlledField label="Last name" required value={plusOneDraft.lastName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, lastName: value }))} />
-                <ControlledField label="Email" type="email" value={plusOneDraft.email} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, email: value }))} />
-                <ControlledField label="Phone" value={plusOneDraft.phone} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, phone: value }))} />
+                <ControlledField label="First name" maxLength={100} required value={plusOneDraft.firstName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, firstName: value }))} />
+                <ControlledField label="Last name" maxLength={100} required value={plusOneDraft.lastName} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, lastName: value }))} />
+                <ControlledField label="Email" maxLength={254} type="email" value={plusOneDraft.email} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, email: value }))} />
+                <ControlledField label="Phone" maxLength={50} value={plusOneDraft.phone} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, phone: value }))} />
                 <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">
                   Age group
                   <Select value={plusOneDraft.ageGroup} onChange={(event) => setPlusOneDraft((draft) => ({ ...draft, ageGroup: event.target.value }))}>
@@ -217,8 +221,8 @@ export function GuestCreationModal({
                 </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ControlledTextArea label="Dietary requirements" value={plusOneDraft.dietaryRequirements} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, dietaryRequirements: value }))} />
-                <ControlledTextArea label="Notes" value={plusOneDraft.notes} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, notes: value }))} />
+                <ControlledTextArea label="Dietary requirements" maxLength={2000} value={plusOneDraft.dietaryRequirements} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, dietaryRequirements: value }))} />
+                <ControlledTextArea label="Notes" maxLength={2000} value={plusOneDraft.notes} onChange={(value) => setPlusOneDraft((draft) => ({ ...draft, notes: value }))} />
               </div>
               <GuestSectionSelector
                 onChange={setSelectedPlusOneSections}
@@ -229,7 +233,7 @@ export function GuestCreationModal({
           ) : null}
         </div>
 
-        {error ? <p className="text-sm text-[#9D3F32]">{error}</p> : null}
+        {error ? <p aria-live="polite" className="text-sm text-[#9D3F32]">{error}</p> : null}
         <div className="flex justify-end gap-2 border-t border-[#F0EFEA] pt-4">
           <Button disabled={isPending} onClick={close} type="button" variant="ghost">Cancel</Button>
           <Button disabled={isPending} type="submit" variant="primary">{isPending ? "Adding…" : "Add guest"}</Button>
@@ -261,24 +265,24 @@ function hasPlusOneDraft(draft: PlusOneDraft, selectedSectionIds: string[]) {
   ].some((value) => value.trim().length > 0) || selectedSectionIds.length > 0;
 }
 
-function Field({ label, name, defaultValue, type = "text", required = false, autoFocus = false }: { label: string; name: string; defaultValue: string; type?: string; required?: boolean; autoFocus?: boolean }) {
-  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<Input autoFocus={autoFocus} data-modal-autofocus={autoFocus ? "true" : undefined} defaultValue={defaultValue} name={name} required={required} type={type} /></label>;
+function Field({ label, name, defaultValue, type = "text", required = false, autoFocus = false, maxLength }: { label: string; name: string; defaultValue: string; type?: string; required?: boolean; autoFocus?: boolean; maxLength?: number }) {
+  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<Input autoFocus={autoFocus} data-modal-autofocus={autoFocus ? "true" : undefined} defaultValue={defaultValue} maxLength={maxLength} name={name} required={required} type={type} /></label>;
 }
 
 function SelectField({ label, name, defaultValue, children }: { label: string; name: string; defaultValue: string; children: ReactNode }) {
   return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<Select defaultValue={defaultValue} name={name}>{children}</Select></label>;
 }
 
-function TextArea({ label, name, defaultValue }: { label: string; name: string; defaultValue: string }) {
-  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" defaultValue={defaultValue} name={name} /></label>;
+function TextArea({ label, name, defaultValue, maxLength }: { label: string; name: string; defaultValue: string; maxLength?: number }) {
+  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" defaultValue={defaultValue} maxLength={maxLength} name={name} /></label>;
 }
 
-function ControlledField({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
-  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<Input onChange={(event) => onChange(event.target.value)} required={required} type={type} value={value} /></label>;
+function ControlledField({ label, value, onChange, type = "text", required = false, maxLength }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; maxLength?: number }) {
+  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<Input maxLength={maxLength} onChange={(event) => onChange(event.target.value)} required={required} type={type} value={value} /></label>;
 }
 
-function ControlledTextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" onChange={(event) => onChange(event.target.value)} value={value} /></label>;
+function ControlledTextArea({ label, value, onChange, maxLength }: { label: string; value: string; onChange: (value: string) => void; maxLength?: number }) {
+  return <label className="grid gap-1.5 text-xs font-medium text-[#6B6B63]">{label}<textarea className="min-h-20 rounded-[10px] border border-[#E8E8E3] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]" maxLength={maxLength} onChange={(event) => onChange(event.target.value)} value={value} /></label>;
 }
 
 function TagFields({ tags }: { tags: GuestListTag[] }) {

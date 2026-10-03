@@ -14,7 +14,10 @@ import {
 import type { GuestActionData } from "@/src/server/actions/guests/guest.actions";
 import { Badge, Button, Select } from "@/src/components/shared/ui";
 import { ConfirmDialog } from "@/src/components/shared/confirm-dialog";
-import { invalidateGuestsQuery } from "./guest-query-cache";
+import {
+  invalidateGuestsAndDashboardQueries,
+  invalidateGuestsQuery,
+} from "./guest-query-cache";
 
 export function HouseholdMembers({
   household,
@@ -42,16 +45,20 @@ export function HouseholdMembers({
     if (selectedGuestIds.length === 0) return;
     setError(null);
     startTransition(async () => {
-      const result: HouseholdActionResult<HouseholdData> = await addGuestsToHousehold(
-        household.id,
-        selectedGuestIds,
-      );
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result: HouseholdActionResult<HouseholdData> = await addGuestsToHousehold(
+          household.id,
+          selectedGuestIds,
+        );
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setSelectedGuestIds([]);
+        void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+      } catch {
+        setError("Unable to add guests to the household. Please try again.");
       }
-      setSelectedGuestIds([]);
-      void invalidateGuestsQuery(queryClient, weddingId);
     });
   }
 
@@ -79,15 +86,25 @@ export function HouseholdMembers({
     if (!confirmation) return;
     setError(null);
     startTransition(async () => {
-      const result = confirmation.action === "remove"
-        ? await removeGuestsFromHousehold(household.id, [confirmation.guestId])
-        : await setHouseholdPrimaryGuest(household.id, confirmation.guestId);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = confirmation.action === "remove"
+          ? await removeGuestsFromHousehold(household.id, [confirmation.guestId])
+          : await setHouseholdPrimaryGuest(household.id, confirmation.guestId);
+        if (!result.success) {
+          setConfirmation(null);
+          setError(result.error);
+          return;
+        }
+        setConfirmation(null);
+        if (confirmation.action === "remove") {
+          void invalidateGuestsAndDashboardQueries(queryClient, weddingId);
+        } else {
+          void invalidateGuestsQuery(queryClient, weddingId);
+        }
+      } catch {
+        setConfirmation(null);
+        setError("Unable to update the household member. Please try again.");
       }
-      setConfirmation(null);
-      void invalidateGuestsQuery(queryClient, weddingId);
     });
   }
 
@@ -157,7 +174,7 @@ export function HouseholdMembers({
           </Button>
         </form>
       ) : null}
-      {error ? <p className="text-sm text-[#9D3F32]">{error}</p> : null}
+      {error ? <p aria-live="polite" className="text-sm text-[#9D3F32]">{error}</p> : null}
       <ConfirmDialog
         confirmLabel={confirmation?.action === "primary" ? "Make primary" : "Remove guest"}
         description={confirmation?.action === "primary"

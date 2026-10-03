@@ -5,6 +5,10 @@ import { WeddingSectionsManager } from "@/src/components/settings/wedding-sectio
 import { getWeddingSections } from "@/src/server/actions/settings/wedding-section.actions";
 import { getWeddingPageContext } from "@/src/server/auth/get-wedding-page-context";
 
+export const metadata = {
+  title: "Wedding day sections",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function WeddingSectionsSettingsPage() {
@@ -25,6 +29,7 @@ export default async function WeddingSectionsSettingsPage() {
       />
       {result.success ? (
         <WeddingSectionsManager
+            key={context.wedding.id}
             initialSections={result.data}
             readOnly={context.role === "VIEWER"}
             weddingId={context.wedding.id}

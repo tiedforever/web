@@ -7,6 +7,10 @@ import {
   getAuthenticatedUser,
 } from "@/src/server/auth/get-authenticated-user";
 
+export const metadata = {
+  title: "Preferences",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function PreferencesSettingsPage() {

@@ -84,7 +84,7 @@ describe("workspace invitation actions", () => {
 
   it("allows the OWNER to invite another OWNER to the active wedding", async () => {
     await expect(
-      createWeddingMemberInvitation({ email: " Partner@Example.com " }),
+      createWeddingMemberInvitation({ role: "OWNER", email: " Partner@Example.com " }),
     ).resolves.toEqual({
       success: true,
       data: {
@@ -100,11 +100,24 @@ describe("workspace invitation actions", () => {
       weddingId: "wedding_1",
       weddingName: "A & B",
       invitedEmail: "partner@example.com",
+      role: "OWNER",
       invitedByUserId: "owner_1",
       inviterFirstName: "Owner",
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings/members");
     expect(mocks.revalidatePath).not.toHaveBeenCalledWith("/", "layout");
+  });
+
+  it.each(["EDITOR", "VIEWER"])("allows an owner to invite a %s", async (role) => {
+    const result = await createWeddingMemberInvitation({ email: "helper@example.com", role });
+    expect(result.success).toBe(true);
+    expect(mocks.createAndSend).toHaveBeenCalledWith(expect.objectContaining({ role }));
+  });
+
+  it.each([undefined, "ADMIN", "owner", null])("rejects an invalid invitation role %s", async (role) => {
+    const result = await createWeddingMemberInvitation({ email: "helper@example.com", role });
+    expect(result.success).toBe(false);
+    expect(mocks.createAndSend).not.toHaveBeenCalled();
   });
 
   it.each(["EDITOR", "VIEWER"])(
@@ -115,7 +128,7 @@ describe("workspace invitation actions", () => {
       );
 
       await expect(
-        createWeddingMemberInvitation({ email: "partner@example.com" }),
+        createWeddingMemberInvitation({ role: "OWNER", email: "partner@example.com" }),
       ).resolves.toEqual({
         success: false,
         error: "You do not have permission to perform this action.",

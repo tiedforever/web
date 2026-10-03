@@ -32,18 +32,22 @@ export function GuestTagManager({
     const formData = new FormData(form);
 
     startTransition(async () => {
-      const result = await createGuestTag({
-        name: formData.get("name"),
-        colour: formData.get("colour"),
-      });
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+      try {
+        const result = await createGuestTag({
+          name: formData.get("name"),
+          colour: formData.get("colour"),
+        });
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
 
-      form.reset();
-      setMessage("Tag created. It is now available when editing a guest.");
-      void invalidateGuestsQuery(queryClient, weddingId);
+        form.reset();
+        setMessage("Tag created. It is now available when editing a guest.");
+        void invalidateGuestsQuery(queryClient, weddingId);
+      } catch {
+        setError("Unable to create the guest tag. Please try again.");
+      }
     });
   }
 
@@ -60,7 +64,9 @@ export function GuestTagManager({
         </div>
         <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={submit}>
           <input
+            aria-label="New guest tag name"
             className="h-10 min-w-0 flex-1 rounded-[10px] border border-[#E8E8E3] bg-white px-3 text-sm outline-none focus:border-[#2D5A27] focus:ring-2 focus:ring-[#EAF0E8]"
+            maxLength={80}
             name="name"
             placeholder="New tag name"
             required
@@ -76,8 +82,8 @@ export function GuestTagManager({
             {isPending ? "Adding…" : "Add tag"}
           </Button>
         </form>
-        {error ? <p className="mt-2 text-xs text-[#9D3F32]">{error}</p> : null}
-        {message ? <p className="mt-2 text-xs text-[#2D5A27]">{message}</p> : null}
+        {error ? <p aria-live="polite" className="mt-2 text-xs text-[#9D3F32]">{error}</p> : null}
+        {message ? <p aria-live="polite" className="mt-2 text-xs text-[#2D5A27]">{message}</p> : null}
       </div>
     </details>
   );

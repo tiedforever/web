@@ -18,16 +18,20 @@ export function DeleteAccountForm() {
     setError(null);
 
     startTransition(async () => {
-      const result = await deleteMyAccount(confirmation);
+      try {
+        const result = await deleteMyAccount(confirmation);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        await navigateAfterAccountDeletion(signOut, (path) => {
+          window.location.assign(path);
+        });
+      } catch {
+        setError("Unable to delete the account. Please try again.");
       }
-
-      await navigateAfterAccountDeletion(signOut, (path) => {
-        window.location.assign(path);
-      });
     });
   }
 
@@ -35,9 +39,9 @@ export function DeleteAccountForm() {
     <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
       <p className="text-sm leading-6 text-[#7A4A43]">
         This permanently deletes your Tied Forever account, removes your access
-        to every wedding, and cannot be undone. Weddings you only belong to
-        will remain for their other members. Accounts that own a wedding must
-        delete those weddings or arrange ownership transfer first.
+        to every wedding, and cannot be undone. Weddings will remain for their
+        other members. If you are the only active owner of any wedding, add
+        another owner or delete that wedding before deleting your account.
       </p>
       <label className="block max-w-xl">
         <span className="mb-1.5 block text-sm font-medium text-[#5C211B]">

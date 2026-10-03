@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 const protectedRoutes = [
   "/onboarding",
+  "/weddings",
   "/dashboard",
   "/checklist",
   "/guests",
@@ -32,14 +33,20 @@ function isProtectedPath(request: NextRequest) {
 
 export default clerkMiddleware(async (auth, request) => {
   if (isProtectedPath(request)) {
-    await auth.protect();
+    const isDocumentRequest = request.method === "GET" && (
+      request.headers.get("sec-fetch-dest") === "document" ||
+      request.headers.get("accept")?.includes("text/html")
+    );
+    await auth.protect(isDocumentRequest
+      ? { unauthenticatedUrl: new URL("/", request.url).toString() }
+      : undefined);
   }
-});
+}, { signInUrl: "/sign-in", signUpUrl: "/sign-up" });
 
 export const config = {
   matcher: [
     // Run Clerk on application requests while leaving static assets alone.
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|sitemap\\.xml|robots\\.txt|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
     "/__clerk/(.*)",
   ],

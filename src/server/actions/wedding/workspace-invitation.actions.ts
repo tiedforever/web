@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isWeddingMemberRole } from "@/src/types/wedding-member-role";
 
 import { PermissionDeniedError, requireOwner } from "../../auth/authorization";
 import { logger } from "../../logging/logger";
@@ -40,8 +41,13 @@ export async function createWeddingMemberInvitation(
   }
 
   const email = (input as Record<string, unknown>).email;
+  const role = (input as Record<string, unknown>).role;
   if (typeof email !== "string" || !isValidEmail(email)) {
     return failure("Enter a valid member invitation email address.");
+  }
+
+  if (!isWeddingMemberRole(role)) {
+    return failure("Choose Owner, Editor, or Viewer for the member invitation.");
   }
 
   try {
@@ -56,6 +62,7 @@ export async function createWeddingMemberInvitation(
       weddingId: context.wedding.id,
       weddingName: context.wedding.name,
       invitedEmail,
+      role,
       invitedByUserId: context.user.id,
       inviterFirstName: context.user.firstName,
     });

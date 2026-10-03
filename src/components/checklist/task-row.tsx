@@ -104,7 +104,7 @@ export function TaskRow({
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[#8A8A82]">
           {dueDate ? <span className="whitespace-nowrap">Due {dueDate}</span> : null}
           {task.assignee ? (
-            <span className="whitespace-nowrap">{assigneeLabel(task)}</span>
+            <span className="min-w-0 max-w-full truncate whitespace-nowrap">{assigneeLabel(task)}</span>
           ) : null}
           <span className={`whitespace-nowrap font-medium ${priorityClass(task.priority)}`}>
             {formatStatus(task.priority)}
