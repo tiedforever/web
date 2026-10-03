@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines every business entity used throughout Ever After.
+This document defines every business entity used throughout Tied Forever.
 
 Each entity specification describes:
 

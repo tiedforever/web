@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document provides a visual representation of the logical data model for Ever After.
+This document provides a visual representation of the logical data model for Tied Forever.
 
 It shows the principal entities, their important attributes and the relationships between them. It should be read alongside:
 
@@ -684,7 +684,7 @@ erDiagram
 
 ## Gift Registry
 
-Registry items link guests to external retailers. Ever After does not process purchases directly.
+Registry items link guests to external retailers. Tied Forever does not process purchases directly.
 
 ```mermaid
 erDiagram
@@ -726,7 +726,7 @@ erDiagram
     }
 ```
 
-The registry redirects users to the retailer. Payment information is never handled by Ever After.
+The registry redirects users to the retailer. Payment information is never handled by Tied Forever.
 
 ---
 

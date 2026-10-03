@@ -29,6 +29,51 @@ enum MembershipStatus {
   @@map("membership_status")
 }
 
+enum WeddingInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+
+  @@map("wedding_invitation_status")
+}
+
+enum GuestAgeGroup {
+  ADULT
+  CHILD
+  INFANT
+
+  @@map("guest_age_group")
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  CANCELLED
+
+  @@map("task_status")
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+
+  @@map("task_priority")
+}
+
+enum TaskRecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+
+  @@map("task_recurrence_frequency")
+}
+
 model User {
   id              String   @id @default(uuid()) @db.Uuid
   authProviderId  String   @unique @map("auth_provider_id")
@@ -39,8 +84,10 @@ model User {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  preference         UserPreference? @relation("UserPreferenceUser")
-  weddingMemberships WeddingMember[] @relation("UserWeddingMemberships")
+  preference          UserPreference?     @relation("UserPreferenceUser")
+  weddingMemberships  WeddingMember[]     @relation("UserWeddingMemberships")
+  sentInvitations     WeddingInvitation[] @relation("WeddingInvitationInviter")
+  acceptedInvitations WeddingInvitation[] @relation("WeddingInvitationAccepter")
 
   @@index([lastName, firstName], map: "users_name_idx")
   @@map("users")
@@ -49,6 +96,7 @@ model User {
 model UserPreference {
   id                          String   @id @default(uuid()) @db.Uuid
   userId                      String   @unique @map("user_id") @db.Uuid
+  activeWeddingId             String?  @map("active_wedding_id") @db.Uuid
   theme                       String
   timezone                    String?
   emailNotificationsEnabled   Boolean  @map("email_notifications_enabled")
@@ -58,7 +106,8 @@ model UserPreference {
   createdAt                   DateTime @default(now()) @map("created_at")
   updatedAt                   DateTime @updatedAt @map("updated_at")
 
-  user User @relation("UserPreferenceUser", fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation("UserPreferenceUser", fields: [userId], references: [id], onDelete: Cascade)
+  activeWedding Wedding? @relation("UserPreferenceActiveWedding", fields: [activeWeddingId], references: [id], onDelete: SetNull)
 
   @@map("user_preferences")
 }
@@ -81,7 +130,15 @@ model Wedding {
 
   // Application/service-level rule: every wedding must retain at least one
   // active OWNER. Prisma cannot enforce this cross-row invariant by itself.
-  members WeddingMember[] @relation("WeddingMemberships")
+  members           WeddingMember[]     @relation("WeddingMemberships")
+  activePreferences UserPreference[]    @relation("UserPreferenceActiveWedding")
+  taskCategories    TaskCategory[]      @relation("WeddingTaskCategories")
+  tasks             Task[]              @relation("WeddingTasks")
+  invitations       WeddingInvitation[] @relation("WeddingInvitations")
+  households        Household[]         @relation("WeddingHouseholds")
+  guests            Guest[]             @relation("WeddingGuests")
+  guestTags         GuestTag[]          @relation("WeddingGuestTags")
+  weddingSections   WeddingSection[]    @relation("WeddingSections")
 
   @@index([weddingDate], map: "weddings_wedding_date_idx")
   @@map("weddings")
@@ -102,10 +159,263 @@ model WeddingMember {
   // deleting this row, preserving membership history for the wedding.
   wedding Wedding @relation("WeddingMemberships", fields: [weddingId], references: [id], onDelete: Cascade)
   user    User    @relation("UserWeddingMemberships", fields: [userId], references: [id], onDelete: Restrict)
+  tasks   Task[]  @relation("WeddingMemberAssignedTasks")
 
   @@unique([weddingId, userId], map: "wedding_members_wedding_id_user_id_key")
   @@index([weddingId], map: "wedding_members_wedding_id_idx")
   @@index([userId], map: "wedding_members_user_id_idx")
   @@index([weddingId, role, status], map: "wedding_members_wedding_id_role_status_idx")
   @@map("wedding_members")
+}
+
+model WeddingInvitation {
+  id               String                  @id @default(uuid()) @db.Uuid
+  weddingId        String                  @map("wedding_id") @db.Uuid
+  invitedEmail     String                  @map("invited_email")
+  role             WeddingMemberRole       @default(OWNER)
+  status           WeddingInvitationStatus @default(PENDING)
+  tokenHash        String                  @unique @map("token_hash")
+  expiresAt        DateTime                @map("expires_at")
+  invitedByUserId  String                  @map("invited_by_user_id") @db.Uuid
+  acceptedByUserId String?                 @map("accepted_by_user_id") @db.Uuid
+  acceptedAt       DateTime?               @map("accepted_at")
+  revokedAt        DateTime?               @map("revoked_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  wedding    Wedding @relation("WeddingInvitations", fields: [weddingId], references: [id], onDelete: Cascade)
+  invitedBy  User    @relation("WeddingInvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  acceptedBy User?   @relation("WeddingInvitationAccepter", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  // Prisma cannot express a partial unique index for only PENDING rows;
+  // duplicate pending invitations are enforced by the invitation service.
+  @@index([weddingId], map: "wedding_invitations_wedding_id_idx")
+  @@index([invitedEmail], map: "wedding_invitations_invited_email_idx")
+  @@index([status], map: "wedding_invitations_status_idx")
+  @@index([expiresAt], map: "wedding_invitations_expires_at_idx")
+  @@index([weddingId, invitedEmail], map: "wedding_invitations_wedding_id_invited_email_idx")
+  @@map("wedding_invitations")
+}
+
+model Household {
+  id             String   @id @default(uuid()) @db.Uuid
+  weddingId      String   @map("wedding_id") @db.Uuid
+  primaryGuestId String?  @unique @map("primary_guest_id") @db.Uuid
+  name           String
+  addressLineOne String   @map("address_line_one")
+  addressLineTwo String?  @map("address_line_two")
+  townCity       String   @map("town_city")
+  countyRegion   String?  @map("county_region")
+  postcode       String
+  country        String
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  wedding      Wedding @relation("WeddingHouseholds", fields: [weddingId], references: [id], onDelete: Cascade)
+  primaryGuest Guest?  @relation("HouseholdPrimaryGuest", fields: [primaryGuestId], references: [id], onDelete: SetNull)
+  guests       Guest[] @relation("HouseholdGuests")
+
+  // Service-level validation must ensure a household is only assigned to
+  // guests from this Wedding; Prisma cannot enforce that across foreign keys.
+  @@index([weddingId], map: "households_wedding_id_idx")
+  @@index([weddingId, name], map: "households_wedding_id_name_idx")
+  @@index([postcode], map: "households_postcode_idx")
+  @@map("households")
+}
+
+model Guest {
+  id                  String        @id @default(uuid()) @db.Uuid
+  weddingId           String        @map("wedding_id") @db.Uuid
+  householdId         String?       @map("household_id") @db.Uuid
+  plusOneForGuestId   String?       @map("plus_one_for_guest_id") @db.Uuid
+  title               String?
+  firstName           String        @map("first_name")
+  lastName            String        @map("last_name")
+  email               String?
+  phone               String?
+  ageGroup            GuestAgeGroup @default(ADULT) @map("age_group")
+  dietaryRequirements String?       @map("dietary_requirements")
+  notes               String?
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  wedding             Wedding              @relation("WeddingGuests", fields: [weddingId], references: [id], onDelete: Cascade)
+  household           Household?           @relation("HouseholdGuests", fields: [householdId], references: [id], onDelete: SetNull)
+  primaryForHousehold Household?           @relation("HouseholdPrimaryGuest")
+  plusOneFor          Guest?               @relation("GuestPlusOne", fields: [plusOneForGuestId], references: [id], onDelete: SetNull)
+  plusOnes            Guest[]              @relation("GuestPlusOne")
+  tagAssignments      GuestTagAssignment[] @relation("GuestTagAssignments")
+  sectionAssignments  GuestSectionAssignment[] @relation("GuestSectionAssignments")
+
+  @@unique([plusOneForGuestId], map: "guests_plus_one_for_guest_id_key")
+  // Service-level validation must ensure household and plus-one target belong
+  // to this Guest's Wedding; tag assignments must also use this Wedding's
+  // tags, and section assignments must use this Wedding's sections. Prisma
+  // cannot enforce these cross-record rules across foreign keys.
+  @@index([weddingId], map: "guests_wedding_id_idx")
+  @@index([householdId], map: "guests_household_id_idx")
+  @@index([lastName], map: "guests_last_name_idx")
+  @@index([email], map: "guests_email_idx")
+  @@index([weddingId, lastName], map: "guests_wedding_id_last_name_idx")
+  @@index([weddingId, householdId], map: "guests_wedding_id_household_id_idx")
+  @@map("guests")
+}
+
+model GuestTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  weddingId String   @map("wedding_id") @db.Uuid
+  name      String
+  colour    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  wedding     Wedding              @relation("WeddingGuestTags", fields: [weddingId], references: [id], onDelete: Cascade)
+  assignments GuestTagAssignment[] @relation("GuestTagAssignments")
+
+  @@unique([weddingId, name], map: "guest_tags_wedding_id_name_key")
+  @@index([weddingId], map: "guest_tags_wedding_id_idx")
+  @@index([name], map: "guest_tags_name_idx")
+  @@map("guest_tags")
+}
+
+model GuestTagAssignment {
+  guestId   String   @map("guest_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  guest Guest    @relation("GuestTagAssignments", fields: [guestId], references: [id], onDelete: Cascade)
+  tag   GuestTag @relation("GuestTagAssignments", fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([guestId, tagId])
+  @@index([tagId], map: "guest_tag_assignments_tag_id_idx")
+  @@map("guest_tag_assignments")
+}
+
+model GuestSectionAssignment {
+  guestId   String   @map("guest_id") @db.Uuid
+  sectionId String   @map("section_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  guest   Guest         @relation("GuestSectionAssignments", fields: [guestId], references: [id], onDelete: Cascade)
+  section WeddingSection @relation("WeddingSectionGuestAssignments", fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@id([guestId, sectionId])
+  @@index([sectionId], map: "guest_section_assignments_section_id_idx")
+  @@map("guest_section_assignments")
+}
+
+model WeddingSection {
+  id          String   @id @default(uuid()) @db.Uuid
+  weddingId   String   @map("wedding_id") @db.Uuid
+  name        String
+  description String?
+  position    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  wedding          Wedding                  @relation("WeddingSections", fields: [weddingId], references: [id], onDelete: Cascade)
+  guestAssignments GuestSectionAssignment[] @relation("WeddingSectionGuestAssignments")
+
+  @@unique([weddingId, name], map: "wedding_sections_wedding_id_name_key")
+  @@index([weddingId], map: "wedding_sections_wedding_id_idx")
+  @@index([weddingId, position], map: "wedding_sections_wedding_id_position_idx")
+  @@index([active], map: "wedding_sections_active_idx")
+  @@map("wedding_sections")
+}
+
+model TaskCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  weddingId String   @map("wedding_id") @db.Uuid
+  name      String
+  icon      String?
+  colour    String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  wedding Wedding @relation("WeddingTaskCategories", fields: [weddingId], references: [id], onDelete: Cascade)
+  tasks   Task[]  @relation("TaskCategoryTasks")
+
+  // The foreign key remains restricted so category deletion must use the
+  // repository transaction that explicitly deletes its tasks first.
+  @@unique([weddingId, name], map: "task_categories_wedding_id_name_key")
+  @@index([weddingId], map: "task_categories_wedding_id_idx")
+  @@index([position], map: "task_categories_position_idx")
+  @@map("task_categories")
+}
+
+model Task {
+  id           String       @id @default(uuid()) @db.Uuid
+  weddingId    String       @map("wedding_id") @db.Uuid
+  categoryId   String       @map("category_id") @db.Uuid
+  assigneeId   String?      @map("assignee_id") @db.Uuid
+  parentTaskId String?      @map("parent_task_id") @db.Uuid
+  title        String
+  description  String?
+  status       TaskStatus   @default(NOT_STARTED)
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime?    @map("due_date") @db.Date
+  completedAt  DateTime?    @map("completed_at")
+  position     Int          @default(0)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  wedding    Wedding         @relation("WeddingTasks", fields: [weddingId], references: [id], onDelete: Cascade)
+  category   TaskCategory    @relation("TaskCategoryTasks", fields: [categoryId], references: [id], onDelete: Restrict)
+  assignee   WeddingMember?  @relation("WeddingMemberAssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+  parentTask Task?           @relation("TaskParentChild", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  childTasks Task[]          @relation("TaskParentChild")
+  links      TaskLink[]      @relation("TaskLinks")
+  recurrence TaskRecurrence? @relation("TaskRecurrence")
+
+  // Service-level validation must ensure category, assignee, and parent task
+  // all belong to this task's Wedding; Prisma cannot enforce that across FKs.
+  // SetNull preserves subtasks when a parent is deleted; deletion semantics
+  // still require application confirmation.
+  @@index([weddingId], map: "tasks_wedding_id_idx")
+  @@index([categoryId], map: "tasks_category_id_idx")
+  @@index([assigneeId], map: "tasks_assignee_id_idx")
+  @@index([parentTaskId], map: "tasks_parent_task_id_idx")
+  @@index([status], map: "tasks_status_idx")
+  @@index([priority], map: "tasks_priority_idx")
+  @@index([dueDate], map: "tasks_due_date_idx")
+  @@index([weddingId, status], map: "tasks_wedding_id_status_idx")
+  @@index([weddingId, dueDate], map: "tasks_wedding_id_due_date_idx")
+  @@map("tasks")
+}
+
+model TaskLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  label     String?
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task Task @relation("TaskLinks", fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "task_links_task_id_idx")
+  @@index([taskId, position], map: "task_links_task_id_position_idx")
+  @@map("task_links")
+}
+
+model TaskRecurrence {
+  id               String                  @id @default(uuid()) @db.Uuid
+  taskId           String                  @unique @map("task_id") @db.Uuid
+  frequency        TaskRecurrenceFrequency
+  interval         Int                     @default(1)
+  startsOn         DateTime?               @map("starts_on") @db.Date
+  endsOn           DateTime?               @map("ends_on") @db.Date
+  nextOccurrenceAt DateTime?               @map("next_occurrence_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  task Task @relation("TaskRecurrence", fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([nextOccurrenceAt], map: "task_recurrences_next_occurrence_at_idx")
+  @@index([frequency], map: "task_recurrences_frequency_idx")
+  @@map("task_recurrences")
 }

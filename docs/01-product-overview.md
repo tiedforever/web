@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Ever After is an all-in-one wedding planning platform designed to help couples organise every aspect of their wedding from a single, collaborative workspace.
+Tied Forever is an all-in-one wedding planning platform designed to help couples organise every aspect of their wedding from a single, collaborative workspace.
 
 The application replaces the need for multiple spreadsheets, notebooks, messaging apps, email threads and disconnected planning tools by providing one central location for planning, organising and tracking every stage of the wedding journey.
 
-Rather than focusing on a single aspect of wedding planning, Ever After brings together task management, guest management, budgeting, supplier tracking, timelines, seating plans, documentation and note-taking into one cohesive application.
+Rather than focusing on a single aspect of wedding planning, Tied Forever brings together task management, guest management, budgeting, supplier tracking, timelines, seating plans, documentation and note-taking into one cohesive application.
 
 The platform is designed to be intuitive enough for couples planning their first wedding while remaining flexible enough to support different wedding styles, sizes and planning preferences.
 
@@ -16,7 +16,7 @@ The platform is designed to be intuitive enough for couples planning their first
 
 Planning a wedding should feel exciting rather than overwhelming.
 
-Ever After aims to become the single source of truth for everything related to a wedding. Every important piece of information should exist in one place, be easy to find, and be shared between everyone involved in planning.
+Tied Forever aims to become the single source of truth for everything related to a wedding. Every important piece of information should exist in one place, be easy to find, and be shared between everyone involved in planning.
 
 The long-term vision is to create a platform that grows with a couple throughout the planning process, reducing stress, improving organisation and removing the need to switch between multiple applications.
 
@@ -50,7 +50,7 @@ As the wedding approaches, managing these disconnected sources becomes increasin
 
 # Solution
 
-Ever After provides a single workspace where every aspect of the wedding can be planned and managed.
+Tied Forever provides a single workspace where every aspect of the wedding can be planned and managed.
 
 Instead of storing information in separate applications, each planning area becomes a dedicated module within the platform.
 
@@ -75,7 +75,7 @@ Each module focuses on one area of planning while remaining connected through a 
 
 # Core Principles
 
-The design of Ever After is guided by several principles.
+The design of Tied Forever is guided by several principles.
 
 ## Simplicity
 
@@ -87,7 +87,7 @@ Users should spend their time planning their wedding rather than learning how to
 
 ## Flexibility
 
-Ever After should adapt to different weddings rather than forcing every couple into the same planning process.
+Tied Forever should adapt to different weddings rather than forcing every couple into the same planning process.
 
 Where appropriate, users should be able to customise categories, organise information in ways that suit them and personalise their workspace.
 
@@ -124,13 +124,13 @@ Secondary audiences may include:
 - Family members assisting with planning
 - Wedding coordinators
 - Professional wedding planners
-- Future commercial customers using Ever After as their primary planning platform
+- Future commercial customers using Tied Forever as their primary planning platform
 
 ---
 
 # Minimum Viable Product
 
-Version 1 of Ever After includes the following modules:
+Version 1 of Tied Forever includes the following modules:
 
 - Dashboard
 - Checklist
@@ -168,7 +168,7 @@ These features may be introduced in future releases once the core planning exper
 
 # Success Criteria
 
-The first release of Ever After will be considered successful if a couple can plan and manage an entire wedding using the application without relying on external spreadsheets or planning software.
+The first release of Tied Forever will be considered successful if a couple can plan and manage an entire wedding using the application without relying on external spreadsheets or planning software.
 
 Success will be measured by:
 
@@ -183,7 +183,7 @@ Success will be measured by:
 
 # Long-Term Vision
 
-Ever After is intended to become more than a personal planning tool.
+Tied Forever is intended to become more than a personal planning tool.
 
 Future versions may introduce automation, integrations, guest-facing experiences and advanced collaboration features while maintaining the same guiding principle:
 

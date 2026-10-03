@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the purpose, behaviour, layout and interactions for every page within Ever After.
+This document defines the purpose, behaviour, layout and interactions for every page within Tied Forever.
 
 The objective is to remove ambiguity during development by documenting exactly what each page should display, what actions the user can perform and how each page interacts with the rest of the application.
 

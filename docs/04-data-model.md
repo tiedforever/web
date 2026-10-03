@@ -2,7 +2,7 @@
 
 # Purpose
 
-This document defines the core data model for Ever After.
+This document defines the core data model for Tied Forever.
 
 It identifies every entity required by the application, the data each entity stores, how entities relate to one another, and the business rules that govern those relationships.
 

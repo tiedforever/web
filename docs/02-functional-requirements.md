@@ -2,7 +2,7 @@
 
 # Purpose
 
-This document defines the functional requirements for Ever After.
+This document defines the functional requirements for Tied Forever.
 
 Each requirement describes behaviour that the application must support in the Minimum Viable Product (MVP). These requirements are implementation independent and should remain valid regardless of the underlying technology stack.
 
@@ -12,7 +12,7 @@ The requirements within this document form the basis for the application's datab
 
 # Functional Areas
 
-Ever After consists of the following functional areas:
+Tied Forever consists of the following functional areas:
 
 1. Dashboard
 2. Checklist

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the logical database schema for Ever After.
+This document defines the logical database schema for Tied Forever.
 
 It describes how data is stored, how entities relate to one another, and the constraints required to ensure data integrity.
 
